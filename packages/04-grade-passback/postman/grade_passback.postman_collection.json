@@ -1,0 +1,173 @@
+{
+  "info": {
+    "name": "WISEflow — 04 Grade Passback",
+    "_postman_id": "wf-pkg-04-grade-passback",
+    "description": "WISEflow Integration Package 04: Grade Passback\n\nFetches submissions and marks from WISEflow; the SIS push step is shown as a placeholder request.\n\nRequired environment variables:\n  baseUrl, clientId, clientSecret,\n  flowId          — a completed/marked WISEflow flow\n  participantId   — a specific participant to inspect\n  sisEndpoint     — your SIS grade endpoint URL",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl      = pm.environment.get('baseUrl');",
+          "const clientId     = pm.environment.get('clientId');",
+          "const clientSecret = pm.environment.get('clientSecret');",
+          "const expiry       = parseInt(pm.environment.get('tokenExpiry') || '0');",
+          "",
+          "if (!pm.environment.get('bearerToken') || Date.now() > expiry - 30000) {",
+          "    pm.sendRequest({",
+          "        url: baseUrl + '/oauth2/token',",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "        body: {",
+          "            mode: 'urlencoded',",
+          "            urlencoded: [",
+          "                { key: 'grant_type',    value: 'client_credentials' },",
+          "                { key: 'client_id',     value: clientId },",
+          "                { key: 'client_secret', value: clientSecret }",
+          "            ]",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) return;",
+          "        const data = res.json();",
+          "        pm.environment.set('bearerToken', data.access_token);",
+          "        pm.environment.set('tokenExpiry', Date.now() + ((data.expires_in || 3600) * 1000));",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Step 1 — Fetch submissions",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const subs = Array.isArray(body) ? body : (body.submissions || []);",
+              "pm.test('Submissions returned', () => pm.expect(subs.length).to.be.above(0));",
+              "if (subs.length) {",
+              "  const pId = subs[0].participantId || subs[0].id;",
+              "  if (pId) pm.environment.set('participantId', pId);",
+              "  console.log('First participantId:', pId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/submissions", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "submissions"] },
+        "description": "Retrieves all submitted work for the exam flow."
+      }
+    },
+    {
+      "name": "Step 2 — Fetch marks for participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const marks = pm.response.json();",
+              "pm.environment.set('lastMarks', JSON.stringify(marks));",
+              "console.log('Marks:', JSON.stringify(marks, null, 2));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/flows/{{flowId}}/participants/{{participantId}}/item-based-marks",
+          "host": ["{{baseUrl}}"],
+          "path": ["flows", "{{flowId}}", "participants", "{{participantId}}", "item-based-marks"]
+        },
+        "description": "Fetches detailed marks and grade for a specific participant."
+      }
+    },
+    {
+      "name": "Step 3 — (local) Transform to SIS format",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Simulate the local transform step in Postman",
+              "const marks = JSON.parse(pm.environment.get('lastMarks') || '{}');",
+              "const transformed = {",
+              "  participantId: pm.environment.get('participantId'),",
+              "  grade: marks.grade || marks.letterGrade || marks.mark || '',",
+              "  score: marks.score || marks.totalScore || null,",
+              "  flowId: pm.environment.get('flowId'),",
+              "  source: 'WISEflow'",
+              "};",
+              "pm.environment.set('transformedGrade', JSON.stringify(transformed));",
+              "console.log('Transformed:', JSON.stringify(transformed, null, 2));"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// This request is a local echo — not a real WISEflow API call",
+              "pm.test('Transform logged', () => pm.expect(pm.environment.get('transformedGrade')).to.be.a('string'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/grading-scale", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "grading-scale"] },
+        "description": "Placeholder step: the Pre-request Script performs the local grade transformation. The actual request here just verifies the grading scale for reference."
+      }
+    },
+    {
+      "name": "Step 4 — POST grades to SIS",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Grade accepted by SIS (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{sisApiKey}}", "description": "Set sisApiKey in your environment" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{transformedGrade}}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{sisEndpoint}}", "host": ["{{sisEndpoint}}"] },
+        "description": "Pushes the transformed grade record to the SIS/LMS endpoint. Set sisEndpoint and sisApiKey in your Postman environment."
+      }
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "WISEflow — 03 Participants & Assessors",
+    "_postman_id": "wf-pkg-03-participants-assessors",
+    "description": "WISEflow Integration Package 03: Participants, Assessors & Allocation\n\nDemonstrates enrolling participants, adding assessors, creating a group, and allocating.\n\nRequired environment variables:\n  baseUrl, clientId, clientSecret,\n  flowId              — an active WISEflow flow\n  participantUserId   — userId to enrol as participant\n  assessorUserId      — userId to add as assessor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl      = pm.environment.get('baseUrl');",
+          "const clientId     = pm.environment.get('clientId');",
+          "const clientSecret = pm.environment.get('clientSecret');",
+          "const expiry       = parseInt(pm.environment.get('tokenExpiry') || '0');",
+          "",
+          "if (!pm.environment.get('bearerToken') || Date.now() > expiry - 30000) {",
+          "    pm.sendRequest({",
+          "        url: baseUrl + '/oauth2/token',",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "        body: {",
+          "            mode: 'urlencoded',",
+          "            urlencoded: [",
+          "                { key: 'grant_type',    value: 'client_credentials' },",
+          "                { key: 'client_id',     value: clientId },",
+          "                { key: 'client_secret', value: clientSecret }",
+          "            ]",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) return;",
+          "        const data = res.json();",
+          "        pm.environment.set('bearerToken', data.access_token);",
+          "        pm.environment.set('tokenExpiry', Date.now() + ((data.expires_in || 3600) * 1000));",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Step 1 — Add participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Participant added (2xx)', () => pm.response.to.be.success);",
+              "const body = pm.response.json();",
+              "const pId = body.id || body.participantId;",
+              "if (pId) pm.environment.set('participantId', pId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{participantUserId}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/participants", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "participants"] }
+      }
+    },
+    {
+      "name": "Step 2 — List participants",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const list = Array.isArray(body) ? body : (body.participants || []);",
+              "pm.test('Participant enrolled', () => pm.expect(list.length).to.be.above(0));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/participants", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "participants"] }
+      }
+    },
+    {
+      "name": "Step 3 — Add assessor",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Assessor added (2xx)', () => pm.response.to.be.success);",
+              "const body = pm.response.json();",
+              "const aId = body.id || body.assessorId;",
+              "if (aId) pm.environment.set('assessorId', aId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{assessorUserId}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/assessors", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "assessors"] }
+      }
+    },
+    {
+      "name": "Step 4 — List assessors",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/assessors", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "assessors"] }
+      }
+    },
+    {
+      "name": "Step 5 — Create assessor group",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Group created (2xx)', () => pm.response.to.be.success);",
+              "const body = pm.response.json();",
+              "const gId = body.id || body.assessorGroupId;",
+              "if (gId) pm.environment.set('assessorGroupId', gId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Integration Demo — Examiner Group\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/assessor-groups", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "assessor-groups"] }
+      }
+    },
+    {
+      "name": "Step 6 — Allocate assessor to participant",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Allocation created (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/flows/{{flowId}}/assessors/{{assessorId}}/allocations/participants/{{participantId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["flows", "{{flowId}}", "assessors", "{{assessorId}}", "allocations", "participants", "{{participantId}}"]
+        }
+      }
+    },
+    {
+      "name": "Step 7 — Verify allocations",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const list = Array.isArray(body) ? body : (body.allocations || []);",
+              "pm.test('At least one allocation exists', () => pm.expect(list.length).to.be.above(0));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/flows/{{flowId}}/assessors/{{assessorId}}/allocations",
+          "host": ["{{baseUrl}}"],
+          "path": ["flows", "{{flowId}}", "assessors", "{{assessorId}}", "allocations"]
+        }
+      }
+    }
+  ]
+}

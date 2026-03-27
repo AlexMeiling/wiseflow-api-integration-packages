@@ -1,0 +1,12 @@
+{
+  "participants": [
+    { "userId": "usr_alice_001", "note": "Replace with real WISEflow user ids" },
+    { "userId": "usr_bob_002" },
+    { "userId": "usr_carol_003" }
+  ],
+  "assessors": [
+    { "userId": "usr_examiner_dr_jones", "note": "Replace with real assessor user ids" },
+    { "userId": "usr_examiner_prof_smith" }
+  ],
+  "_note": "These ids are placeholders. Run Package 01 or look up real user ids via GET /users/search."
+}

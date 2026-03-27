@@ -1,0 +1,142 @@
+name: Test Integration Packages + API Spec Diff
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run monthly — also catches silent API drift between releases
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+jobs:
+  test-packages:
+    name: Run all four workflow scripts
+    runs-on: ubuntu-latest
+    env:
+      WISEFLOW_BASE_URL:    ${{ secrets.WISEFLOW_BASE_URL }}
+      WISEFLOW_CLIENT_ID:   ${{ secrets.WISEFLOW_CLIENT_ID }}
+      WISEFLOW_CLIENT_SECRET: ${{ secrets.WISEFLOW_CLIENT_SECRET }}
+      WISEFLOW_FLOW_ID:     ${{ secrets.WISEFLOW_FLOW_ID }}
+      WISEFLOW_PARTICIPANT_USER_ID: ${{ secrets.WISEFLOW_PARTICIPANT_USER_ID }}
+      WISEFLOW_ASSESSOR_USER_ID:    ${{ secrets.WISEFLOW_ASSESSOR_USER_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Package 01 — User Management
+        run: python packages/01-user-management/wiseflow_users.py
+
+      - name: Package 02 — Flow Management
+        run: python packages/02-flow-management/wiseflow_flows.py
+
+      - name: Package 03 — Participants & Assessors
+        if: env.WISEFLOW_FLOW_ID != ''
+        run: python packages/03-participants-assessors/wiseflow_participants_assessors.py
+
+      - name: Package 04 — Grade Passback (no SIS push)
+        if: env.WISEFLOW_FLOW_ID != ''
+        run: python packages/04-grade-passback/wiseflow_grade_passback.py
+        # SIS_ENDPOINT is intentionally not set; script will log it as skipped
+
+      - name: Upload run results as artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-results
+          path: |
+            packages/**/run_results.json
+            packages/**/grades_output.json
+
+  spec-diff:
+    name: Detect WISEflow API spec changes
+    runs-on: ubuntu-latest
+    # Runs independently of script tests so a cred-less fork can still check the spec
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install openapi-diff
+        run: pip install openapi-diff-tool 2>/dev/null || pip install deepdiff pyyaml requests
+
+      - name: Download current API spec
+        run: |
+          curl -fsSL https://docs.wiseflow.net/uniwise.yaml -o /tmp/wiseflow-latest.yaml \
+            || echo "WARNING: Could not fetch API spec — skipping diff" && exit 0
+
+      - name: Diff against committed snapshot
+        id: diff
+        run: |
+          python - <<'EOF'
+          import sys, yaml, json
+          from deepdiff import DeepDiff
+
+          try:
+              with open('docs/api-spec-snapshot.yaml') as f:
+                  snapshot = yaml.safe_load(f)
+              with open('/tmp/wiseflow-latest.yaml') as f:
+                  latest = yaml.safe_load(f)
+          except FileNotFoundError as e:
+              print(f"Snapshot file missing: {e}. Skipping diff.")
+              sys.exit(0)
+
+          diff = DeepDiff(snapshot, latest, ignore_order=True, verbose_level=1)
+          if diff:
+              summary = diff.to_json()
+              print("::warning::API spec changes detected — review packages for compatibility.")
+              print(summary[:4000])
+              with open('/tmp/spec-diff.json', 'w') as f:
+                  f.write(summary)
+              # Signal that an issue should be opened
+              with open('/tmp/has-diff', 'w') as f:
+                  f.write('1')
+          else:
+              print("✓ API spec unchanged since last snapshot.")
+          EOF
+
+      - name: Open GitHub Issue on spec change
+        if: ${{ hashFiles('/tmp/has-diff') != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let diffBody = '';
+            try { diffBody = fs.readFileSync('/tmp/spec-diff.json', 'utf8').slice(0, 3000); } catch {}
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `🔔 WISEflow API spec change detected — packages may need update`,
+              body: [
+                '## WISEflow API specification has changed',
+                '',
+                'The CI job detected a difference between `docs/api-spec-snapshot.yaml` and the',
+                'current spec at https://docs.wiseflow.net/uniwise.yaml.',
+                '',
+                '**Action required:**',
+                '1. Review the diff below.',
+                '2. Check SYCAmore for the release notes for this change.',
+                '3. Update any affected scripts and bump their `VERSION` constant.',
+                '4. Update `docs/CHANGELOG.md` and `compatibility.json`.',
+                '5. Re-run this workflow against a sandbox to verify.',
+                '6. Commit the updated `docs/api-spec-snapshot.yaml`.',
+                '',
+                '```json',
+                diffBody,
+                '```',
+              ].join('\n'),
+              labels: ['api-update', 'maintenance'],
+            });

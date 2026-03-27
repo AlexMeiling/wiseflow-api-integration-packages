@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>WISEflow API — Integration Packages</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Downloadable WISEflow API integration packages with animated workflow previews. Four categories: User Management, Flow Management, Participants & Assessors, Grade Passback." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Top nav ─────────────────────────────────────────────────────────── -->
+  <header class="topnav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">WISEflow Integration Packages</span>
+        <span class="brand-badge">API 1.34.0</span>
+      </div>
+      <nav class="nav-links" aria-label="Package navigation">
+        <a href="#pkg-users">01 Users</a>
+        <a href="#pkg-flows">02 Flows</a>
+        <a href="#pkg-participants">03 Participants</a>
+        <a href="#pkg-grades">04 Grades</a>
+        <a href="https://docs.wiseflow.net/" target="_blank" rel="noopener" class="nav-api-link">
+          API Docs ↗
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <h1>WISEflow API<br><span class="hero-accent">Integration Packages</span></h1>
+        <p class="hero-lede">
+          Runnable workflow scripts and Postman collections for the four most common WISEflow API integration patterns.
+          Each package includes executable Python code, sample data, and an animated step-by-step preview below.
+        </p>
+        <div class="hero-tags">
+          <span class="tag">Python scripts</span>
+          <span class="tag">Postman collections</span>
+          <span class="tag">OAuth2 · client_credentials</span>
+          <span class="tag">OAS 3.0</span>
+        </div>
+      </div>
+      <div class="hero-cards">
+        <a href="#pkg-users"        class="hero-card" style="--c:#6366F1"><span>01</span>User Management</a>
+        <a href="#pkg-flows"        class="hero-card" style="--c:#0EA5E9"><span>02</span>Flow Management</a>
+        <a href="#pkg-participants" class="hero-card" style="--c:#10B981"><span>03</span>Participants & Assessors</a>
+        <a href="#pkg-grades"       class="hero-card" style="--c:#F59E0B"><span>04</span>Grade Passback</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Getting started ─────────────────────────────────────────────────── -->
+  <section class="getting-started">
+    <div class="gs-inner">
+      <h2>Getting started</h2>
+      <div class="gs-steps">
+        <div class="gs-step">
+          <div class="gs-num">1</div>
+          <div>
+            <strong>Clone the repo</strong>
+            <code class="inline-code">git clone https://github.com/your-org/wiseflow-integration-packages</code>
+          </div>
+        </div>
+        <div class="gs-step">
+          <div class="gs-num">2</div>
+          <div>
+            <strong>Install dependencies</strong>
+            <code class="inline-code">pip install -r requirements.txt</code>
+          </div>
+        </div>
+        <div class="gs-step">
+          <div class="gs-num">3</div>
+          <div>
+            <strong>Configure credentials</strong>
+            <code class="inline-code">cp .env.example packages/01-user-management/.env</code>
+            <p class="gs-note">Fill in <code>WISEFLOW_BASE_URL</code>, <code>WISEFLOW_CLIENT_ID</code>, <code>WISEFLOW_CLIENT_SECRET</code>.</p>
+          </div>
+        </div>
+        <div class="gs-step">
+          <div class="gs-num">4</div>
+          <div>
+            <strong>Run a package</strong>
+            <code class="inline-code">python packages/01-user-management/wiseflow_users.py</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Package cards (injected by app.js) ──────────────────────────────── -->
+  <main class="packages-wrapper">
+    <div id="packages-grid"></div>
+  </main>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-col">
+        <strong>WISEflow Integration Packages</strong>
+        <p>Built to help institutions understand and adopt the WISEflow API faster.</p>
+      </div>
+      <div class="footer-col">
+        <strong>Resources</strong>
+        <ul>
+          <li><a href="https://docs.wiseflow.net/" target="_blank" rel="noopener">WISEflow API Docs</a></li>
+          <li><a href="https://help.wiseflow.net/service-centre/api" target="_blank" rel="noopener">Service Centre — API</a></li>
+          <li><a href="https://github.com/your-org/wiseflow-integration-packages" target="_blank" rel="noopener">GitHub Repository</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <strong>Maintenance</strong>
+        <ul>
+          <li><a href="https://github.com/your-org/wiseflow-integration-packages/blob/main/docs/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
+          <li><a href="https://github.com/your-org/wiseflow-integration-packages/blob/main/compatibility.json" target="_blank" rel="noopener">Compatibility matrix</a></li>
+          <li><a href="https://sycamore.wiseflow.net" target="_blank" rel="noopener">SYCAmore roadmap</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>WISEflow API 1.34.0 · Packages v1.0.0 · MIT licence</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

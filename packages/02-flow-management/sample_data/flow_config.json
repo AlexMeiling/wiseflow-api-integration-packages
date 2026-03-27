@@ -1,0 +1,17 @@
+{
+  "exampleFlows": [
+    {
+      "title": "Introduction to Computer Science — Final Exam",
+      "startDate": "2026-05-15T09:00:00Z",
+      "endDate": "2026-05-15T12:00:00Z",
+      "description": "Closed book examination. All electronic devices must be switched off. Answers must be submitted before the end time."
+    },
+    {
+      "title": "Advanced Mathematics — Midterm",
+      "startDate": "2026-04-10T13:00:00Z",
+      "endDate": "2026-04-10T15:00:00Z",
+      "description": "Open book. Calculators are permitted. Problem sets 1–5 only."
+    }
+  ],
+  "_note": "Sample flow configurations for demonstration. flowTypeId and flowPurposeId are resolved at runtime from the licence."
+}

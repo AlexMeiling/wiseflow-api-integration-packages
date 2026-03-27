@@ -1,0 +1,31 @@
+{
+  "description": "Tracks which WISEflow API version each integration package was last verified against.",
+  "wiseflowApiVersion": "1.34.0",
+  "releaseDate": "2026-03-26",
+  "packages": {
+    "01-user-management": {
+      "version": "1.0.0",
+      "lastTestedApiVersion": "1.34.0",
+      "lastTestedDate": "2026-03-26",
+      "status": "verified"
+    },
+    "02-flow-management": {
+      "version": "1.0.0",
+      "lastTestedApiVersion": "1.34.0",
+      "lastTestedDate": "2026-03-26",
+      "status": "verified"
+    },
+    "03-participants-assessors": {
+      "version": "1.0.0",
+      "lastTestedApiVersion": "1.34.0",
+      "lastTestedDate": "2026-03-26",
+      "status": "verified"
+    },
+    "04-grade-passback": {
+      "version": "1.0.0",
+      "lastTestedApiVersion": "1.34.0",
+      "lastTestedDate": "2026-03-26",
+      "status": "verified"
+    }
+  }
+}

@@ -1,0 +1,231 @@
+{
+  "info": {
+    "name": "WISEflow — 02 Flow Management",
+    "_postman_id": "wf-pkg-02-flow-management",
+    "description": "WISEflow Integration Package 02: Flow Management\n\nDemonstrates creating a flow, setting dates and description, and activating it.\n\nRequired environment variables:\n  baseUrl, clientId, clientSecret",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{bearerToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl      = pm.environment.get('baseUrl');",
+          "const clientId     = pm.environment.get('clientId');",
+          "const clientSecret = pm.environment.get('clientSecret');",
+          "const expiry       = parseInt(pm.environment.get('tokenExpiry') || '0');",
+          "",
+          "if (!pm.environment.get('bearerToken') || Date.now() > expiry - 30000) {",
+          "    pm.sendRequest({",
+          "        url: baseUrl + '/oauth2/token',",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "        body: {",
+          "            mode: 'urlencoded',",
+          "            urlencoded: [",
+          "                { key: 'grant_type',    value: 'client_credentials' },",
+          "                { key: 'client_id',     value: clientId },",
+          "                { key: 'client_secret', value: clientSecret }",
+          "            ]",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) return;",
+          "        const data = res.json();",
+          "        pm.environment.set('bearerToken', data.access_token);",
+          "        pm.environment.set('tokenExpiry', Date.now() + ((data.expires_in || 3600) * 1000));",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Step 1 — Get flow types",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const types = Array.isArray(body) ? body : (body.flowTypes || []);",
+              "pm.test('At least one flow type returned', () => pm.expect(types.length).to.be.above(0));",
+              "if (types.length) { pm.environment.set('flowTypeId', types[0].id); console.log('flowTypeId:', types[0].id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/license/flow-types", "host": ["{{baseUrl}}"], "path": ["license", "flow-types"] }
+      }
+    },
+    {
+      "name": "Step 2 — Get flow purposes",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const purposes = Array.isArray(body) ? body : (body.flowPurposes || []);",
+              "if (purposes.length) { pm.environment.set('flowPurposeId', purposes[0].id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/license/flow-purposes", "host": ["{{baseUrl}}"], "path": ["license", "flow-purposes"] }
+      }
+    },
+    {
+      "name": "Step 3 — Create flow",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Flow created (2xx)', () => pm.response.to.be.success);",
+              "const body = pm.response.json();",
+              "const flowId = body.id || body.flowId;",
+              "if (flowId) { pm.environment.set('flowId', flowId); console.log('flowId:', flowId); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Integration Demo — CS101 Final Exam\",\n  \"flowTypeId\": \"{{flowTypeId}}\",\n  \"flowPurposeId\": \"{{flowPurposeId}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/license/create/flow", "host": ["{{baseUrl}}"], "path": ["license", "create", "flow"] }
+      }
+    },
+    {
+      "name": "Step 4 — Verify flow",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flow/{{flowId}}", "host": ["{{baseUrl}}"], "path": ["flow", "{{flowId}}"] }
+      }
+    },
+    {
+      "name": "Step 5 — Set exam dates",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Dates set (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"startDate\": \"2026-05-15T09:00:00Z\",\n  \"endDate\":   \"2026-05-15T12:00:00Z\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/dates", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "dates"] }
+      }
+    },
+    {
+      "name": "Step 6 — Set description",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Description set (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"description\": \"This is the final examination for Introduction to Computer Science (CS101). Closed book, 3 hours.\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/description", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "description"] }
+      }
+    },
+    {
+      "name": "Step 7 — Check grading scale",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/grading-scale", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "grading-scale"] }
+      }
+    },
+    {
+      "name": "Step 8 — Activate flow",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Flow activated (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/flows/{{flowId}}/activate", "host": ["{{baseUrl}}"], "path": ["flows", "{{flowId}}", "activate"] }
+      }
+    }
+  ]
+}

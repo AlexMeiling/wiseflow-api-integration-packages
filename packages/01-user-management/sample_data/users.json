@@ -1,0 +1,23 @@
+{
+  "users": [
+    {
+      "email": "alice.johnson@institution.edu",
+      "firstname": "Alice",
+      "lastname": "Johnson",
+      "eduPrincipalName": "ajohnson@institution.edu"
+    },
+    {
+      "email": "bob.smith@institution.edu",
+      "firstname": "Bob",
+      "lastname": "Smith",
+      "eduPrincipalName": "bsmith@institution.edu"
+    },
+    {
+      "email": "carol.white@institution.edu",
+      "firstname": "Carol",
+      "lastname": "White",
+      "eduPrincipalName": "cwhite@institution.edu"
+    }
+  ],
+  "_note": "These are sample users for demonstration. Replace with real data before running against production."
+}

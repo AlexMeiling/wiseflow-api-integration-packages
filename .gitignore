@@ -1,0 +1,30 @@
+# Environment / credentials — NEVER commit these
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Script output — generated at runtime
+run_results.json
+grades_output.json
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# GitHub Actions local runner
+act/

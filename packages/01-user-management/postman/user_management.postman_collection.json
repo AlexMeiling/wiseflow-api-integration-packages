@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "WISEflow — 01 User Management",
+    "_postman_id": "wf-pkg-01-user-management",
+    "description": "WISEflow Integration Package 01: User Management\n\nDemonstrates creating a user, verifying, assigning a role, updating details, and patching custom data.\n\nRequired environment variables:\n  baseUrl        — e.g. https://your-institution.wiseflow.net\n  clientId       — OAuth2 client id\n  clientSecret   — OAuth2 client secret\n\nThe Pre-request Script on the collection automatically fetches and caches a bearer token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{bearerToken}}", "type": "string" }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const baseUrl      = pm.environment.get('baseUrl');",
+          "const clientId     = pm.environment.get('clientId');",
+          "const clientSecret = pm.environment.get('clientSecret');",
+          "const expiry       = parseInt(pm.environment.get('tokenExpiry') || '0');",
+          "",
+          "if (!pm.environment.get('bearerToken') || Date.now() > expiry - 30000) {",
+          "    pm.sendRequest({",
+          "        url: baseUrl + '/oauth2/token',",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "        body: {",
+          "            mode: 'urlencoded',",
+          "            urlencoded: [",
+          "                { key: 'grant_type',    value: 'client_credentials' },",
+          "                { key: 'client_id',     value: clientId },",
+          "                { key: 'client_secret', value: clientSecret }",
+          "            ]",
+          "        }",
+          "    }, (err, res) => {",
+          "        if (err) { console.error('Token fetch failed:', err); return; }",
+          "        const data = res.json();",
+          "        pm.environment.set('bearerToken', data.access_token);",
+          "        pm.environment.set('tokenExpiry', Date.now() + ((data.expires_in || 3600) * 1000));",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Step 1 — Create user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "const userId = body.id || body.userId || body.user_id;",
+              "if (userId) { pm.environment.set('userId', userId); console.log('userId:', userId); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"integration.demo@institution.edu\",\n  \"firstname\": \"Integration\",\n  \"lastname\": \"Demo\",\n  \"eduPrincipalName\": \"integration.demo@institution.edu\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/license/user", "host": ["{{baseUrl}}"], "path": ["license", "user"] },
+        "description": "Creates a new user on the WISEflow licence."
+      }
+    },
+    {
+      "name": "Step 2 — Verify user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('User id matches', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.id || body.userId).to.eql(pm.environment.get('userId'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+        "description": "Verifies the newly created user can be retrieved."
+      }
+    },
+    {
+      "name": "Step 3 — Discover roles",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const roles = pm.response.json();",
+              "const list = Array.isArray(roles) ? roles : (roles.roles || []);",
+              "if (list.length) { pm.environment.set('roleId', list[0].id); console.log('roleId:', list[0].id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/license/roles", "host": ["{{baseUrl}}"], "path": ["license", "roles"] },
+        "description": "Returns all roles available on the licence."
+      }
+    },
+    {
+      "name": "Step 4 — Assign role",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Role assigned (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roleId\": \"{{roleId}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/users/{{userId}}/roles", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "roles"] },
+        "description": "Assigns the role discovered in Step 3 to the user."
+      }
+    },
+    {
+      "name": "Step 5 — Update user name",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstname\": \"Integration\",\n  \"lastname\": \"Demo-Updated\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+        "description": "Updates the user's name (simulates a name change sync)."
+      }
+    },
+    {
+      "name": "Step 6 — Discover user-data types",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const types = pm.response.json();",
+              "const list = Array.isArray(types) ? types : (types.userDataTypes || []);",
+              "if (list.length) { pm.environment.set('userDataTypeId', list[0].id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/license/user-data-types", "host": ["{{baseUrl}}"], "path": ["license", "user-data-types"] }
+      }
+    },
+    {
+      "name": "Step 7 — Patch custom user-data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('User data patched (2xx)', () => pm.response.to.be.success);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"userDataTypeId\": \"{{userDataTypeId}}\",\n    \"value\": \"STU-2026-DEMO\"\n  }\n]",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": { "raw": "{{baseUrl}}/users/{{userId}}/user-data", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}", "user-data"] },
+        "description": "Attaches a custom institutional data field value to the user."
+      }
+    }
+  ],
+  "variable": []
+}
