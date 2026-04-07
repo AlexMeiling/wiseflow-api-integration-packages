@@ -57,12 +57,12 @@ A shared environment file lives at `postman/WISEflow-Integration.postman_environ
 
 **Import collections:** In Postman → *Import* → paste the raw GitHub URL of the `.postman_collection.json` file, e.g.:
 ```
-https://raw.githubusercontent.com/AlexMeiling/wiseflow-integration-packages/main/packages/01-user-management/postman/user_management.postman_collection.json
+https://raw.githubusercontent.com/AlexMeiling/wiseflow-api-integration-packages/main/packages/01-user-management/postman/user_management.postman_collection.json
 ```
 
 **Import environment:** In Postman → *Import* → paste:
 ```
-https://raw.githubusercontent.com/AlexMeiling/wiseflow-integration-packages/main/postman/WISEflow-Integration.postman_environment.json
+https://raw.githubusercontent.com/AlexMeiling/wiseflow-api-integration-packages/main/postman/WISEflow-Integration.postman_environment.json
 ```
 
 Then fill in `baseUrl`, `clientId`, `clientSecret` in the environment — the collections fetch a bearer token automatically. Never commit your actual credentials.

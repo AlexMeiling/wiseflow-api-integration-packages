@@ -7,7 +7,7 @@
 
 // ── Package workflow data ────────────────────────────────────────────────────
 
-const REPO = 'https://github.com/AlexMeiling/wiseflow-integration-packages';
+const REPO = 'https://github.com/AlexMeiling/wiseflow-api-integration-packages';
 
 const PACKAGES = [
   {
