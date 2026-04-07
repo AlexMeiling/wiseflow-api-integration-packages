@@ -13,6 +13,8 @@ const PACKAGES = [
   {
     id: 'users',
     num: '01',
+    folder: '01-user-management',
+    collectionFile: 'user_management.postman_collection.json',
     title: 'User Management',
     subtitle: 'Adding & updating users',
     color: '#6366F1',
@@ -74,6 +76,8 @@ const PACKAGES = [
   {
     id: 'flows',
     num: '02',
+    folder: '02-flow-management',
+    collectionFile: 'flow_management.postman_collection.json',
     title: 'Flow Management',
     subtitle: 'Creating & managing flows',
     color: '#0EA5E9',
@@ -127,6 +131,8 @@ const PACKAGES = [
   {
     id: 'participants',
     num: '03',
+    folder: '03-participants-assessors',
+    collectionFile: 'participants_assessors.postman_collection.json',
     title: 'Participants & Assessors',
     subtitle: 'Enrolment, assessors & allocation',
     color: '#10B981',
@@ -188,6 +194,8 @@ const PACKAGES = [
   {
     id: 'grades',
     num: '04',
+    folder: '04-grade-passback',
+    collectionFile: 'grade_passback.postman_collection.json',
     title: 'Grade Passback',
     subtitle: 'Passing grades to LMS / SIS',
     color: '#F59E0B',
@@ -533,15 +541,15 @@ function buildCard(pkg) {
       </div>
     </div>
     <div class="pkg-actions">
-      <a class="btn btn-outline" href="${REPO}/tree/main/packages/${pkg.num}-${pkg.id}" target="_blank" rel="noopener">
+      <a class="btn btn-outline" href="${REPO}/tree/main/packages/${pkg.folder}" target="_blank" rel="noopener">
         View on GitHub
       </a>
-      <a class="btn btn-solid" href="${REPO}/releases/latest/download/${pkg.num}-${pkg.id}.zip" download>
+      <a class="btn btn-solid" href="https://download-directory.github.io/?url=${encodeURIComponent(`${REPO}/tree/main/packages/${pkg.folder}`)}" target="_blank" rel="noopener">
         ↓ Download
       </a>
       <a class="btn btn-postman"
         href="https://app.getpostman.com/run-collection?url=${encodeURIComponent(
-          `${REPO}/raw/main/packages/${pkg.num}-${pkg.id}/postman/${pkg.id.replace('-','_')}.postman_collection.json`
+          `https://raw.githubusercontent.com/AlexMeiling/wiseflow-api-integration-packages/main/packages/${pkg.folder}/postman/${pkg.collectionFile}`
         )}"
         target="_blank" rel="noopener">
         Open in Postman
