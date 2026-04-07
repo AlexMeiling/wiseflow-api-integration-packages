@@ -7,7 +7,7 @@
 
 // ── Package workflow data ────────────────────────────────────────────────────
 
-const REPO = 'https://github.com/your-org/wiseflow-integration-packages';
+const REPO = 'https://github.com/AlexMeiling/wiseflow-integration-packages';
 
 const PACKAGES = [
   {
@@ -526,7 +526,7 @@ function buildCard(pkg) {
 <section class="pkg-card" id="pkg-${pkg.id}">
   <div class="pkg-header" style="border-color:${pkg.color}">
     <div class="pkg-meta">
-      <span class="pkg-num" style="background:${pkg.color}">0${pkg.num.replace(/^0+/, '') || pkg.num}</span>
+      <span class="pkg-num" style="background:${pkg.color}">${pkg.num}</span>
       <div>
         <h2 class="pkg-title">${pkg.title}</h2>
         <p class="pkg-subtitle">${pkg.subtitle}</p>

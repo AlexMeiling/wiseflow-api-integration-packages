@@ -52,10 +52,20 @@ Results are written to `run_results.json` in each package directory.
 
 ## Postman collections
 
-Each package folder contains a `postman/` subfolder with a ready-made Postman collection.
+Each package folder contains a `postman/` subfolder with a ready-made Postman collection.  
+A shared environment file lives at `postman/WISEflow-Integration.postman_environment.json` — import this once and it works across all four collections.
 
-**Import:** In Postman → *Import* → link to the raw GitHub URL of the `.postman_collection.json` file.  
-**Environment variables required:** `baseUrl`, `clientId`, `clientSecret` — the collection fetches a bearer token automatically via a Pre-request Script. Never commit your actual credentials.
+**Import collections:** In Postman → *Import* → paste the raw GitHub URL of the `.postman_collection.json` file, e.g.:
+```
+https://raw.githubusercontent.com/AlexMeiling/wiseflow-integration-packages/main/packages/01-user-management/postman/user_management.postman_collection.json
+```
+
+**Import environment:** In Postman → *Import* → paste:
+```
+https://raw.githubusercontent.com/AlexMeiling/wiseflow-integration-packages/main/postman/WISEflow-Integration.postman_environment.json
+```
+
+Then fill in `baseUrl`, `clientId`, `clientSecret` in the environment — the collections fetch a bearer token automatically. Never commit your actual credentials.
 
 ---
 
