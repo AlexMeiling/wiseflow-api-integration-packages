@@ -548,11 +548,9 @@ function buildCard(pkg) {
         ↓ Download
       </a>
       <a class="btn btn-postman"
-        href="https://app.getpostman.com/run-collection?url=${encodeURIComponent(
-          `https://raw.githubusercontent.com/AlexMeiling/wiseflow-api-integration-packages/main/packages/${pkg.folder}/postman/${pkg.collectionFile}`
-        )}"
-        target="_blank" rel="noopener">
-        Open in Postman
+        href="https://raw.githubusercontent.com/AlexMeiling/wiseflow-api-integration-packages/main/packages/${pkg.folder}/postman/${pkg.collectionFile}"
+        download="${pkg.collectionFile}">
+        ↓ Postman Collection
       </a>
     </div>
   </div>
