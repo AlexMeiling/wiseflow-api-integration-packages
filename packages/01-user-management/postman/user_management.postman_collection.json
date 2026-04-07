@@ -2,7 +2,7 @@
   "info": {
     "name": "WISEflow — 01 User Management",
     "_postman_id": "wf-pkg-01-user-management",
-    "description": "WISEflow Integration Package 01: User Management\n\nDemonstrates creating a user, verifying, assigning a role, updating details, and patching custom data.\n\nRequired environment variables:\n  baseUrl        — e.g. https://your-institution.wiseflow.net\n  clientId       — OAuth2 client id\n  clientSecret   — OAuth2 client secret\n\nThe Pre-request Script on the collection automatically fetches and caches a bearer token.",
+    "description": "WISEflow Integration Package 01: User Management\n\nDemonstrates creating a user, verifying, assigning a role, updating details, and patching custom data.\n\nRequired environment variables:\n  baseUrl        — e.g. https://europe-api.wiseflow.net/v1\n  clientId       — OAuth2 client id\n  clientSecret   — OAuth2 client secret\n\nThe Pre-request Script on the collection automatically fetches and caches a bearer token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {

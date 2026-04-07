@@ -37,7 +37,7 @@ pip install -r requirements.txt
    ```
 2. Edit `.env` and fill in your credentials:
    ```
-   WISEFLOW_BASE_URL=https://your-institution.wiseflow.net
+   WISEFLOW_BASE_URL=https://europe-api.wiseflow.net/v1
    WISEFLOW_CLIENT_ID=your_client_id
    WISEFLOW_CLIENT_SECRET=your_client_secret
    ```

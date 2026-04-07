@@ -44,7 +44,7 @@ Expected output:
 ```
 ================================================================
   WISEflow Integration Package 01 — User Management
-  Package version: 1.0.0  ·  API: https://your-institution.wiseflow.net
+  Package version: 1.0.0  ·  API: https://europe-api.wiseflow.net/v1
 ================================================================
 
 ──────────────────────────────────────────────────────────────
