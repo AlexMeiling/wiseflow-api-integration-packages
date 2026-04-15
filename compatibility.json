@@ -15,7 +15,7 @@
       "lastTestedDate": "2026-03-26",
       "status": "verified"
     },
-    "03-participants-assessors": {
+    "03-user-allocation": {
       "version": "1.0.0",
       "lastTestedApiVersion": "1.34.0",
       "lastTestedDate": "2026-03-26",

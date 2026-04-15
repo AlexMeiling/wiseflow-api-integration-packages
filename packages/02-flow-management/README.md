@@ -2,6 +2,25 @@
 
 Demonstrates creating and fully configuring an exam flow in WISEflow from scratch.
 
+## Prerequisites
+
+Before running this workflow, ensure you have retrieved the following identifiers:
+
+| Prerequisite | API Endpoints | Notes |
+|--------------|---------------|-------|
+| **Flow Type ID** | `GET /licence/flow-types` | Determine which exam types are available in your licence |
+| **Flow Purpose ID** | `GET /licence/flow-purposes` | Select the appropriate flow purpose for your use case |
+| **Grading Scale ID** | `GET /licence/grading-scale` | Identify the grading framework (numeric, alpha, custom) |
+| **Assessor Types** | `GET /flows/{flowId}/assessors` | (Retrieved after flow creation to configure assessment roles) |
+| **OAuth2 credentials** | — | Must have `flow creation` and `flow management` permissions |
+
+### Workflow Variants
+
+This package demonstrates two creation patterns:
+
+1. **Simple**: `POST /licence/create/flow` — Start from scratch
+2. **Template**: `POST /flows/{flowId}/copy` — Clone an existing flow as a template
+
 ## What this package does
 
 | Step | Method | Endpoint | Description |
@@ -22,12 +41,12 @@ Use this package when you need to:
 - Bulk-create flows for a semester at the start of term
 - Integrate WISEflow flow creation into a CI/QA pipeline for assessment design
 
-## Prerequisites
+## Setup
 
 - Python 3.9+, `pip install -r ../../requirements.txt`
 - OAuth2 client credentials with `flow creation` and `flow management` permissions
 
-## Setup
+### Configuration
 
 ```bash
 cp ../../.env.example .env

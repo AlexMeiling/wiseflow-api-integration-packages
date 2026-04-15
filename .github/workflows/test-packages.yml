@@ -40,9 +40,9 @@ jobs:
       - name: Package 02 — Flow Management
         run: python packages/02-flow-management/wiseflow_flows.py
 
-      - name: Package 03 — Participants & Assessors
+      - name: Package 03 — User Allocation
         if: env.WISEFLOW_FLOW_ID != ''
-        run: python packages/03-participants-assessors/wiseflow_participants_assessors.py
+        run: python packages/03-user-allocation/wiseflow_participants_assessors.py
 
       - name: Package 04 — Grade Passback (no SIS push)
         if: env.WISEFLOW_FLOW_ID != ''

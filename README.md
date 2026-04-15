@@ -13,7 +13,7 @@ Downloadable, runnable workflow scripts that demonstrate the most common WISEflo
 |---|---------|----------------------|
 | 01 | [User Management](packages/01-user-management/) | Create users, assign roles, update details, patch custom data |
 | 02 | [Flow Management](packages/02-flow-management/) | Create exam flows, set dates/description, activate |
-| 03 | [Participants & Assessors](packages/03-participants-assessors/) | Enrol participants, add assessors, create groups, allocate |
+| 03 | [User Allocation](packages/03-user-allocation/) | Enrol participants, add assessors, create groups, allocate |
 | 04 | [Grade Passback](packages/04-grade-passback/) | Fetch submissions & marks, transform, push to SIS/LMS |
 
 ---
@@ -91,7 +91,7 @@ wiseflow-integration-packages/
 ├── packages/
 │   ├── 01-user-management/
 │   ├── 02-flow-management/
-│   ├── 03-participants-assessors/
+│   ├── 03-user-allocation/
 │   └── 04-grade-passback/
 ├── web/                            # GitHub Pages site
 ├── docs/

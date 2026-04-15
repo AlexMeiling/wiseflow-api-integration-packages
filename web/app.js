@@ -21,6 +21,11 @@ const PACKAGES = [
     description:
       'Automate user account synchronisation with your institution\'s SIS. ' +
       'Discover roles and custom data types, then create/update users and manage deactivation.',
+    prerequisites: [
+      { item: 'User Roles defined', endpoint: 'GET /licence/roles', notes: 'Retrieve available roleIds from your WISEflow licence' },
+      { item: 'User Data Types available', endpoint: 'GET /licence/user-data-types', notes: 'Identify custom userDataTypeIds for PATCH operations' },
+      { item: 'OAuth2 credentials', endpoint: '—', notes: 'Must have `user management` permission on the licence' },
+    ],
     steps: [
       {
         label: 'Discover roles',
@@ -63,6 +68,12 @@ const PACKAGES = [
     collectionFile: 'flow_management.postman_collection.json',
     title: 'Flow Management',
     subtitle: 'Creating & managing flows',
+    prerequisites: [
+      { item: 'Flow Type ID', endpoint: 'GET /licence/flow-types', notes: 'Determine which exam types are available in your licence' },
+      { item: 'Flow Purpose ID', endpoint: 'GET /licence/flow-purposes', notes: 'Select the appropriate flow purpose for your use case' },
+      { item: 'Grading Scale ID', endpoint: 'GET /licence/grading-scale', notes: 'Identify the grading framework (numeric, alpha, custom)' },
+      { item: 'OAuth2 credentials', endpoint: '—', notes: 'Must have `flow creation` and `flow management` permissions' },
+    ],
     color: '#0EA5E9',
     description:
       'Automate the creation and configuration of exam flows in WISEflow. ' +
@@ -110,13 +121,16 @@ const PACKAGES = [
         res: { id: 'flow_d4e5f6', status: 'active' },
       },
     ],
-  },
-  {
-    id: 'participants',
-    num: '03',
-    folder: '03-participants-assessors',
-    collectionFile: 'participants_assessors.postman_collection.json',
-    title: 'Participants & Assessors',
+  },User Allocation',
+    subtitle: 'Enrolment, assessors & allocation',
+    color: '#10B981',
+    description:
+      'Enrol students and examiners into an active exam flow, set up managers and invigilators, ' +
+      'create participant groups, and allocate assessors. ' +
+      'This is the key setup workflow for a live exam session.',
+    prerequisites: [
+      { item: 'Flow ID', endpoint: 'POST /flows/search', notes: 'The target exam flow must be active' },
+    ]
     subtitle: 'Enrolment, assessors & allocation',
     color: '#10B981',
     description:
@@ -186,6 +200,10 @@ const PACKAGES = [
       'Retrieve final assessment results from WISEflow and transmit them to your Student Information System (SIS) or LMS. ' +
       'Covers fetching submissions, extracting item-based marks, transforming to the target schema, ' +
       'and simulating a push to an external endpoint.',
+    prerequisites: [
+      { item: 'Marked Flow ID', endpoint: '—', notes: 'A WISEflow flow that has completed marking (status: marked or completed)' },
+      { item: 'SIS/LMS Endpoint', endpoint: '—', notes: 'Optional: the target grade ingestion endpoint; can be tested with a local server' },
+    ],
     steps: [
       {
         label: 'Fetch submissions',
@@ -513,6 +531,14 @@ function buildCard(pkg) {
     </li>`;
   }).join('');
 
+  const prereqsHtml = pkg.prerequisites ? pkg.prerequisites.map(p => `
+    <tr>
+      <td><strong>${p.item}</strong></td>
+      <td><code class="prereq-endpoint">${p.endpoint}</code></td>
+      <td>${p.notes}</td>
+    </tr>
+  `).join('') : '';
+
   return `
 <section class="pkg-card" id="pkg-${pkg.id}">
   <div class="pkg-header" style="border-color:${pkg.color}">
@@ -539,6 +565,24 @@ function buildCard(pkg) {
   </div>
 
   <p class="pkg-desc">${pkg.description}</p>
+
+  ${prereqsHtml ? `
+  <div class="prerequisites-section">
+    <h3>Prerequisites</h3>
+    <table class="prerequisites-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Endpoint / Source</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${prereqsHtml}
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
 
   <div class="pkg-body">
     <!-- Left: steps list + controls -->

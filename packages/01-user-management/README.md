@@ -2,6 +2,16 @@
 
 Demonstrates a complete user-management workflow using the WISEflow API.
 
+## Prerequisites
+
+Before running this workflow, ensure:
+
+| Item | API Endpoint | Notes |
+|------|--------------|-------|
+| User Roles defined | `GET /licence/roles` | Retrieve available roleIds from your WISEflow licence |
+| User Data Types available | `GET /licence/user-data-types` | Identify custom userDataTypeIds for PATCH operations |
+| OAuth2 credentials | — | Must have `user management` permission on the licence |
+
 ## What this package does
 
 | Step | Method | Endpoint | Description |
@@ -21,13 +31,13 @@ Use this package when you need to:
 - Provision new students at enrolment time
 - Keep names and custom fields in sync after updates in your source system
 
-## Prerequisites
+## Setup
 
 - Python 3.9+, `pip install -r ../../requirements.txt`
 - A WISEflow sandbox tenant with OAuth2 client credentials
 - The credentials must have `user management` permission on the licence
 
-## Setup
+### Configuration
 
 ```bash
 cp ../../.env.example .env
