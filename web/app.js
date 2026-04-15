@@ -121,7 +121,13 @@ const PACKAGES = [
         res: { id: 'flow_d4e5f6', status: 'active' },
       },
     ],
-  },User Allocation',
+  },
+  {
+    id: 'participants',
+    num: '03',
+    folder: '03-user-allocation',
+    collectionFile: 'participants_assessors.postman_collection.json',
+    title: 'User Allocation',
     subtitle: 'Enrolment, assessors & allocation',
     color: '#10B981',
     description:
@@ -130,13 +136,7 @@ const PACKAGES = [
       'This is the key setup workflow for a live exam session.',
     prerequisites: [
       { item: 'Flow ID', endpoint: 'POST /flows/search', notes: 'The target exam flow must be active' },
-    ]
-    subtitle: 'Enrolment, assessors & allocation',
-    color: '#10B981',
-    description:
-      'Enrol students and examiners into an active exam flow, create assessor groups, ' +
-      'and allocate assessors to specific participants. ' +
-      'This is the key setup workflow for a live exam session.',
+    ],
     steps: [
       {
         label: 'Add participant',
