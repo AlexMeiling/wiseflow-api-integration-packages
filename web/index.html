@@ -5,10 +5,10 @@
   <title>WISEflow API — Integration Packages</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Downloadable WISEflow API integration packages with animated workflow previews. Four categories: User Management, Flow Management, User Allocation, Grade Passback." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="theme-color" content="#769b08" />
+  <link rel="icon" type="image/svg+xml" href="assets/wiseflow-mark.svg" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
 
@@ -16,7 +16,7 @@
   <header class="topnav">
     <div class="nav-inner">
       <div class="nav-brand">
-        <span class="brand-dot" aria-hidden="true"></span>
+        <img class="brand-logo" src="assets/wiseflow-mark.svg" alt="WISEflow" width="40" height="40" />
         <span class="brand-name">WISEflow Integration Packages</span>
         <span class="brand-badge">API 1.34.0</span>
       </div>
@@ -25,6 +25,7 @@
         <a href="#pkg-flows">02 Flows</a>
         <a href="#pkg-participants">03 Allocation</a>
         <a href="#pkg-grades">04 Grades</a>
+        <a href="fads.html" class="nav-fads-link">FADS ↗</a>
         <a href="https://docs.wiseflow.net/" target="_blank" rel="noopener" class="nav-api-link">
           API Docs ↗
         </a>
@@ -49,10 +50,10 @@
         </div>
       </div>
       <div class="hero-cards">
-        <a href="#pkg-users"        class="hero-card" style="--c:#6366F1"><span>01</span>User Management</a>
-        <a href="#pkg-flows"        class="hero-card" style="--c:#0EA5E9"><span>02</span>Flow Management</a>
-        <a href="#pkg-participants" class="hero-card" style="--c:#10B981"><span>03</span>User Allocation</a>
-        <a href="#pkg-grades"       class="hero-card" style="--c:#F59E0B"><span>04</span>Grade Passback</a>
+        <a href="#pkg-users"        class="hero-card" style="--c:#3587F2"><span>01</span>User Management</a>
+        <a href="#pkg-flows"        class="hero-card" style="--c:#769b08"><span>02</span>Flow Management</a>
+        <a href="#pkg-participants" class="hero-card" style="--c:#5ab847"><span>03</span>User Allocation</a>
+        <a href="#pkg-grades"       class="hero-card" style="--c:#f69311"><span>04</span>Grade Passback</a>
       </div>
     </div>
   </section>
@@ -120,7 +121,7 @@
         <ul>
           <li><a href="https://github.com/AlexMeiling/wiseflow-api-integration-packages/blob/main/docs/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
           <li><a href="https://github.com/AlexMeiling/wiseflow-api-integration-packages/blob/main/compatibility.json" target="_blank" rel="noopener">Compatibility matrix</a></li>
-          <li><a href="https://sycamore.wiseflow.net" target="_blank" rel="noopener">SYCAmore roadmap</a></li>
+          <li><a href="https://uniwise-sycamore.web.app/wiseflow/themes" target="_blank" rel="noopener">SYCAmore roadmap</a></li>
         </ul>
       </div>
     </div>
@@ -129,6 +130,6 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

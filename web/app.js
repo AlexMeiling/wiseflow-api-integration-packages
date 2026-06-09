@@ -17,7 +17,7 @@ const PACKAGES = [
     collectionFile: 'user_management.postman_collection.json',
     title: 'User Management',
     subtitle: 'Adding & updating users',
-    color: '#6366F1',
+    color: '#3587F2',
     description:
       'Automate user account synchronisation with your institution\'s SIS. ' +
       'Discover roles and custom data types, then create/update users and manage deactivation.',
@@ -74,7 +74,7 @@ const PACKAGES = [
       { item: 'Grading Scale ID', endpoint: 'GET /licence/grading-scale', notes: 'Identify the grading framework (numeric, alpha, custom)' },
       { item: 'OAuth2 credentials', endpoint: '—', notes: 'Must have `flow creation` and `flow management` permissions' },
     ],
-    color: '#0EA5E9',
+    color: '#769b08',
     description:
       'Automate the creation and configuration of exam flows in WISEflow. ' +
       'This package walks through discovering available flow types, creating a flow, ' +
@@ -129,7 +129,7 @@ const PACKAGES = [
     collectionFile: 'participants_assessors.postman_collection.json',
     title: 'User Allocation',
     subtitle: 'Enrolment, assessors & allocation',
-    color: '#10B981',
+    color: '#5ab847',
     description:
       'Enrol students and examiners into an active exam flow, set up managers and invigilators, ' +
       'create participant groups, and allocate assessors. ' +
@@ -195,7 +195,7 @@ const PACKAGES = [
     collectionFile: 'grade_passback.postman_collection.json',
     title: 'Grade Passback',
     subtitle: 'Passing grades to LMS / SIS',
-    color: '#F59E0B',
+    color: '#f69311',
     description:
       'Retrieve final assessment results from WISEflow and transmit them to your Student Information System (SIS) or LMS. ' +
       'Covers fetching submissions, extracting item-based marks, transforming to the target schema, ' +
@@ -243,12 +243,13 @@ const PACKAGES = [
 
 // ── Method badge colours ─────────────────────────────────────────────────────
 
+// WISEflow palette — semantic mapping for HTTP methods
 const METHOD_COLORS = {
-  GET:    '#10B981',
-  POST:   '#3B82F6',
-  PUT:    '#F97316',
-  PATCH:  '#8B5CF6',
-  DELETE: '#EF4444',
+  GET:    '#5ab847',  // moss / success-9
+  POST:   '#4787b8',  // blue-9
+  PUT:    '#f69311',  // orange-9
+  PATCH:  '#6C5CE7',  // originality-purple-9
+  DELETE: '#ef4444',  // tomato / error-9
 };
 
 // ── Per-package animation state ───────────────────────────────────────────────
@@ -274,11 +275,11 @@ function buildSVG(pkg, currentStepIndex) {
   const mid         = (LEFT_CX + RIGHT_CX) / 2;
   const pkgColor    = pkg.color;
 
-  // State helpers
+  // State helpers — colours map to the WISEflow grey scale
   const isActive    = i => i === currentStepIndex;
   const isDone      = i => i < currentStepIndex;
-  const arrowColor  = i => isActive(i) ? pkgColor : (isDone(i) ? '#6B7280' : '#D1D5DB');
-  const textColor   = i => isActive(i) ? pkgColor : (isDone(i) ? '#374151' : '#B0B7C3');
+  const arrowColor  = i => isActive(i) ? pkgColor : (isDone(i) ? '#5d5d5e' : '#a4a4a5');
+  const textColor   = i => isActive(i) ? pkgColor : (isDone(i) ? '#0d0d0d' : '#5d5d5e');
   const opacity     = i => i <= currentStepIndex ? '1' : '0.25';
 
   const parts = [];
@@ -287,7 +288,7 @@ function buildSVG(pkg, currentStepIndex) {
   // ── defs ──
   parts.push(`<defs>`);
   // Arrow markers — one per state
-  [['active', pkgColor], ['done', '#6B7280'], ['future', '#D1D5DB']].forEach(([name, fill]) => {
+  [['active', pkgColor], ['done', '#747475'], ['future', '#d7d7d8']].forEach(([name, fill]) => {
     parts.push(`<marker id="arr-${pkg.id}-${name}-r" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
       <polygon points="0 0,9 3.5,0 7" fill="${fill}"/></marker>`);
     parts.push(`<marker id="arr-${pkg.id}-${name}-l" markerWidth="9" markerHeight="7" refX="1" refY="3.5" orient="auto">
@@ -298,15 +299,15 @@ function buildSVG(pkg, currentStepIndex) {
   // ── actor boxes ──
   [[LEFT_CX, 'Your System'], [RIGHT_CX, 'WISEflow API']].forEach(([cx, label]) => {
     parts.push(`<rect x="${cx - ACTOR_W / 2}" y="8" width="${ACTOR_W}" height="${ACTOR_H}" rx="7"
-      fill="white" stroke="#E5E7EB" stroke-width="1.5"/>`);
+      fill="white" stroke="#ebebeb" stroke-width="1.5"/>`);
     parts.push(`<text x="${cx}" y="${8 + ACTOR_H / 2 + 5}" text-anchor="middle"
-      font-family="Inter,system-ui,sans-serif" font-size="12.5" font-weight="600" fill="#111827">${label}</text>`);
+      font-family="Signika,system-ui,sans-serif" font-size="14.5" font-weight="700" fill="#0d0d0d">${label}</text>`);
   });
 
   // ── lifelines ──
   const lifeTop = 8 + ACTOR_H;
-  parts.push(`<line x1="${LEFT_CX}"  y1="${lifeTop}" x2="${LEFT_CX}"  y2="${H - 8}" stroke="#E5E7EB" stroke-width="1.5" stroke-dasharray="5,5"/>`);
-  parts.push(`<line x1="${RIGHT_CX}" y1="${lifeTop}" x2="${RIGHT_CX}" y2="${H - 8}" stroke="#E5E7EB" stroke-width="1.5" stroke-dasharray="5,5"/>`);
+  parts.push(`<line x1="${LEFT_CX}"  y1="${lifeTop}" x2="${LEFT_CX}"  y2="${H - 8}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="5,5"/>`);
+  parts.push(`<line x1="${RIGHT_CX}" y1="${lifeTop}" x2="${RIGHT_CX}" y2="${H - 8}" stroke="#ebebeb" stroke-width="1.5" stroke-dasharray="5,5"/>`);
 
   // ── steps ──
   pkg.steps.forEach((step, i) => {
@@ -320,12 +321,12 @@ function buildSVG(pkg, currentStepIndex) {
     parts.push(`<g opacity="${op}">`);
 
     // Step number badge (left side)
-    const badgeFill = isActive(i) ? pkgColor : (isDone(i) ? '#9CA3AF' : '#E5E7EB');
+    const badgeFill = isActive(i) ? pkgColor : (isDone(i) ? '#8c8c8c' : '#ebebeb');
     const badgeTxt  = isDone(i)   ? '✓'     : String(i + 1);
-    const badgeTxtColor = (isDone(i) || isActive(i)) ? 'white' : '#9CA3AF';
-    parts.push(`<circle cx="22" cy="${arrowY}" r="11" fill="${badgeFill}"/>`);
-    parts.push(`<text x="22" y="${arrowY + 4}" text-anchor="middle"
-      font-family="Inter,sans-serif" font-size="${isDone(i) ? 10 : 10}" font-weight="700" fill="${badgeTxtColor}">${badgeTxt}</text>`);
+    const badgeTxtColor = (isDone(i) || isActive(i)) ? 'white' : '#8c8c8c';
+    parts.push(`<circle cx="22" cy="${arrowY}" r="13" fill="${badgeFill}"/>`);
+    parts.push(`<text x="22" y="${arrowY + 5}" text-anchor="middle"
+      font-family="Signika,sans-serif" font-size="12.5" font-weight="700" fill="${badgeTxtColor}">${badgeTxt}</text>`);
 
     if (isSelf) {
       // Local transform — self-loop on left  
@@ -335,11 +336,11 @@ function buildSVG(pkg, currentStepIndex) {
         fill="none" stroke="${col}" stroke-width="1.5" stroke-dasharray="5,3"
         marker-end="url(#arr-${pkg.id}-${state}-r)"/>`);
       parts.push(`<text x="${lx - loopR - 8}" y="${arrowY + 10}" text-anchor="end"
-        font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="${txtCol}">${step.label}</text>`);
+        font-family="Signika,sans-serif" font-size="12" font-weight="600" fill="${txtCol}">${step.label}</text>`);
       // "local" badge
-      parts.push(`<rect x="${lx - loopR * 2 - 2}" y="${arrowY - 14}" width="36" height="14" rx="3" fill="${col}"/>`);
-      parts.push(`<text x="${lx - loopR * 2 + 16}" y="${arrowY - 4}" text-anchor="middle"
-        font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="white">local</text>`);
+      parts.push(`<rect x="${lx - loopR * 2 - 4}" y="${arrowY - 16}" width="42" height="17" rx="3" fill="${col}"/>`);
+      parts.push(`<text x="${lx - loopR * 2 + 17}" y="${arrowY - 4}" text-anchor="middle"
+        font-family="Signika,sans-serif" font-size="11" font-weight="700" fill="white">local</text>`);
     } else {
       // Standard arrow
       const fromX = LEFT_CX + 6;
@@ -351,17 +352,17 @@ function buildSVG(pkg, currentStepIndex) {
         marker-end="url(#arr-${pkg.id}-${state}-r)"/>`);
 
       // Method badge above arrow
-      const badgeW = step.method.length * 7 + 12;
-      parts.push(`<rect x="${mid - badgeW / 2}" y="${arrowY - 17}" width="${badgeW}" height="15" rx="3"
-        fill="${isActive(i) ? mCol : (isDone(i) ? '#9CA3AF' : '#E5E7EB')}"/>`);
-      parts.push(`<text x="${mid}" y="${arrowY - 6}" text-anchor="middle"
-        font-family="Inter,sans-serif" font-size="9" font-weight="700"
-        fill="${(isActive(i) || isDone(i)) ? 'white' : '#B0B7C3'}">${step.method}</text>`);
+      const badgeW = step.method.length * 8.5 + 16;
+      parts.push(`<rect x="${mid - badgeW / 2}" y="${arrowY - 20}" width="${badgeW}" height="18" rx="3"
+        fill="${isActive(i) ? mCol : (isDone(i) ? '#8c8c8c' : '#ebebeb')}"/>`);
+      parts.push(`<text x="${mid}" y="${arrowY - 7}" text-anchor="middle"
+        font-family="Signika,sans-serif" font-size="11.5" font-weight="700"
+        fill="${(isActive(i) || isDone(i)) ? 'white' : '#5d5d5e'}">${step.method}</text>`);
 
-      // Endpoint label below arrow
-      const ep = step.endpoint.length > 42 ? step.endpoint.substring(0, 39) + '…' : step.endpoint;
-      parts.push(`<text x="${mid}" y="${arrowY + 16}" text-anchor="middle"
-        font-family="Inter,monospace,sans-serif" font-size="10" fill="${txtCol}">${ep}</text>`);
+      // Endpoint label below arrow — full path shown in <title> on hover
+      const ep = step.endpoint.length > 50 ? step.endpoint.substring(0, 47) + '…' : step.endpoint;
+      parts.push(`<text x="${mid}" y="${arrowY + 18}" text-anchor="middle"
+        font-family="Signika,monospace,sans-serif" font-size="12" font-weight="500" fill="${txtCol}"><title>${step.endpoint}</title>${ep}</text>`);
     }
 
     parts.push(`</g>`);
@@ -373,29 +374,39 @@ function buildSVG(pkg, currentStepIndex) {
 
 // ── Side panel: request / response preview ───────────────────────────────────
 
+const BASE_URL = 'https://europe-api.wiseflow.net/v1';
+
 function renderPanel(containerId, pkg, stepIndex) {
   const panel = document.getElementById(containerId);
   if (!panel) return;
 
   if (stepIndex < 0) {
     panel.innerHTML = `<div class="panel-idle">
-      <p>Press <strong>Play</strong> to step through the workflow, or use the arrows.</p>
+      <p>Click any step or press <strong>Play</strong> to preview the request &amp; response.</p>
     </div>`;
     return;
   }
 
   const step = pkg.steps[stepIndex];
+  const mColor = step.method ? (METHOD_COLORS[step.method] || '#888') : '#8c8c8c';
+  const mLabel = step.method || 'local';
+  const urlDisplay = step.method ? `${BASE_URL}${step.endpoint}` : '(local data transform — no HTTP call)';
+
   const reqHtml = step.req !== null
     ? `<div class="panel-block">
         <div class="panel-label req">Request body</div>
         <pre>${JSON.stringify(step.req, null, 2)}</pre>
        </div>`
-    : '';
+    : (step.method === 'GET' ? `<div class="panel-block"><div class="panel-label req">Request body</div><pre><em style="color:#8c8c8c">— no body (GET request) —</em></pre></div>` : '');
 
   panel.innerHTML = `
     <div class="panel-step-info">
       <span class="step-num" style="background:${pkg.color}">Step ${stepIndex + 1}</span>
       <strong>${step.label}</strong>
+    </div>
+    <div class="panel-url">
+      <span class="panel-method-badge" style="background:${mColor}">${mLabel}</span>
+      <code class="panel-endpoint-code">${urlDisplay}</code>
     </div>
     <p class="panel-desc">${step.description}</p>
     ${reqHtml}
@@ -480,6 +491,12 @@ function resetAnim(pkg, svgId, panelId, ctrlId) {
   redraw(pkg, svgId, panelId, ctrlId);
 }
 
+function jumpToStep(pkg, svgId, panelId, ctrlId, i) {
+  stopPlay(pkg, ctrlId);
+  getState(pkg.id).currentStep = i;
+  redraw(pkg, svgId, panelId, ctrlId);
+}
+
 function updateControls(pkg, ctrlId) {
   const st    = getState(pkg.id);
   const ctrl  = document.getElementById(ctrlId);
@@ -523,11 +540,14 @@ function buildCard(pkg) {
     const badge = s.method
       ? `<span class="method-badge" style="background:${mc}">${s.method}</span>`
       : `<span class="method-badge local">local</span>`;
-    return `<li class="step-row">
+    return `<li class="step-row" role="button" tabindex="0" title="Click to preview step ${i+1}"
+      onclick="jumpToStep(PACKAGES.find(p=>p.id==='${pkg.id}'),'${svgId}','${panelId}','${ctrlId}',${i})"
+      onkeydown="if(event.key==='Enter'||event.key===' ')jumpToStep(PACKAGES.find(p=>p.id==='${pkg.id}'),'${svgId}','${panelId}','${ctrlId}',${i})">
       <span class="step-idx">${i + 1}</span>
       ${badge}
       <code>${s.endpoint}</code>
       <span class="step-lbl">${s.label}</span>
+      <span class="step-row-hint">Click to preview →</span>
     </li>`;
   }).join('');
 
@@ -620,7 +640,7 @@ function buildCard(pkg) {
         <!-- Side panel -->
         <div class="detail-panel" id="${panelId}">
           <div class="panel-idle">
-            <p>Press <strong>Play</strong> to step through the workflow.</p>
+            <p>Click any step or press <strong>Play</strong> to preview the request &amp; response.</p>
           </div>
         </div>
       </div>

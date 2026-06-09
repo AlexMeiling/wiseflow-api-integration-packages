@@ -1,0 +1,264 @@
+/* ==========================================================================
+   WISEflow Design System — Tokens
+   Single source of truth for colours, spacing, typography, shadows, radii.
+   Generated from the official WISEflow design tokens.
+   ========================================================================== */
+
+:root {
+  /* ── Greys ──────────────────────────────────────────────────────────── */
+  --wf-colors-gray-1:  #f8f8f8;
+  --wf-colors-gray-2:  #f2f2f2;
+  --wf-colors-gray-3:  #ebebeb;
+  --wf-colors-gray-4:  #dedede;
+  --wf-colors-gray-5:  #d7d7d8;
+  --wf-colors-gray-6:  #CACACB;
+  --wf-colors-gray-7:  #C3C3C4;
+  --wf-colors-gray-8:  #BDBDBE;
+  --wf-colors-gray-9:  #8c8c8c;
+  --wf-colors-gray-10: #747475;
+  --wf-colors-gray-11: #474748;
+  --wf-colors-gray-12: #0d0d0d;
+
+  /* ── Brand & extended palette ──────────────────────────────────────── */
+  --wf-colors-originality-purple-1: #EEEFFE;
+  --wf-colors-originality-purple-2: #DEE0FD;
+  --wf-colors-originality-purple-9: #6C5CE7;
+  --wf-colors-originality-purple-11: #40368F;
+  --wf-colors-originality-purple-12: #251f59;
+
+  --wf-colors-dark-blue-1:  #EAEEF7;
+  --wf-colors-dark-blue-9:  #3C5FA6;
+  --wf-colors-dark-blue-11: #2A447A;
+  --wf-colors-dark-blue-12: #192C51;
+
+  --wf-colors-light-blue-1:  #EBF4FF;
+  --wf-colors-light-blue-2:  #D8E8FF;
+  --wf-colors-light-blue-9:  #3587F2;
+  --wf-colors-light-blue-10: #2D75D2;
+  --wf-colors-light-blue-11: #1D5196;
+  --wf-colors-light-blue-12: #0e315e;
+
+  --wf-colors-turquoise-1:  #EEFCF7;
+  --wf-colors-turquoise-9:  #04D9B2;
+  --wf-colors-turquoise-11: #01866D;
+
+  --wf-colors-green-1:  #f0f5ea;
+  --wf-colors-green-2:  #e2ebd5;
+  --wf-colors-green-3:  #d4e1bf;
+  --wf-colors-green-9:  #769b08;
+  --wf-colors-green-10: #668606;
+  --wf-colors-green-11: #567204;
+  --wf-colors-green-12: #384B02;
+
+  --wf-colors-blue-1:  #ecf3f8;
+  --wf-colors-blue-2:  #dae7f1;
+  --wf-colors-blue-9:  #4787b8;
+  --wf-colors-blue-11: #326388;
+
+  --wf-colors-cherry-1:  #f9eceb;
+  --wf-colors-cherry-9:  #b04545;
+  --wf-colors-cherry-11: #6C2727;
+
+  --wf-colors-yellow-1:  #fdfaee;
+  --wf-colors-yellow-2:  #fbf5dc;
+  --wf-colors-yellow-9:  #ebc728;
+  --wf-colors-yellow-10: #ccad21;
+  --wf-colors-yellow-11: #917A15;
+
+  --wf-colors-orange-1:  #fff5ec;
+  --wf-colors-orange-2:  #ffead8;
+  --wf-colors-orange-9:  #f69311;
+  --wf-colors-orange-10: #d67f0d;
+  --wf-colors-orange-11: #7B4704;
+
+  --wf-colors-copper-1:  #fbeee9;
+  --wf-colors-copper-9:  #c55616;
+  --wf-colors-copper-11: #793209;
+
+  --wf-colors-grass-1:  #f2f8eb;
+  --wf-colors-grass-2:  #e5f0d7;
+  --wf-colors-grass-9:  #85b100;
+  --wf-colors-grass-11: #506C00;
+
+  --wf-colors-moss-1:  #eff8ed;
+  --wf-colors-moss-2:  #dff2db;
+  --wf-colors-moss-3:  #cfebca;
+  --wf-colors-moss-9:  #5ab847;
+  --wf-colors-moss-10: #4da03d;
+  --wf-colors-moss-11: #295B1F;
+
+  --wf-colors-teal-1:  #ebf3f3;
+  --wf-colors-teal-9:  #338b8d;
+  --wf-colors-teal-11: #1C5455;
+
+  --wf-colors-sky-1:  #edf5f9;
+  --wf-colors-sky-2:  #daecf3;
+  --wf-colors-sky-3:  #c8e2ee;
+  --wf-colors-sky-9:  #3a9ec3;
+  --wf-colors-sky-10: #3189a9;
+  --wf-colors-sky-11: #206078;
+
+  --wf-colors-indigo-1:  #EAEDFF;
+  --wf-colors-indigo-9:  #4E35F2;
+  --wf-colors-indigo-11: #2D1D96;
+
+  --wf-colors-tomato-1:  #ffeeec;
+  --wf-colors-tomato-9:  #ef4444;
+  --wf-colors-tomato-11: #942626;
+
+  --wf-colors-pink-1:  #fff2f5;
+  --wf-colors-pink-9:  #ff769f;
+
+  --wf-colors-purple-1:  #f7edf3;
+  --wf-colors-purple-9:  #a25187;
+
+  --wf-colors-brown-1:  #f2edea;
+  --wf-colors-brown-9:  #7d573b;
+
+  --wf-colors-banana-1:  #fef9ed;
+  --wf-colors-banana-9:  #f5c20b;
+
+  --wf-colors-lime-1:  #FBFEF3;
+  --wf-colors-lime-9:  #D9F27E;
+  --wf-colors-lime-11: #6C793C;
+
+  /* ── Semantic role colours (from design system) ────────────────────── */
+  --wf-colors-primary-1:  #f0f5ea;
+  --wf-colors-primary-2:  #e2ebd5;
+  --wf-colors-primary-3:  #d4e1bf;
+  --wf-colors-primary-4:  #c6d7aa;
+  --wf-colors-primary-5:  #aac37f;
+  --wf-colors-primary-6:  #9db969;
+  --wf-colors-primary-7:  #90af52;
+  --wf-colors-primary-8:  #83a536;
+  --wf-colors-primary-9:  #769b08;
+  --wf-colors-primary-10: #668606;
+  --wf-colors-primary-11: #567204;
+  --wf-colors-primary-12: #384B02;
+
+  --wf-colors-secondary-1:  #ecf3f8;
+  --wf-colors-secondary-9:  #4787b8;
+  --wf-colors-secondary-11: #326388;
+
+  --wf-colors-info-1:  #edf5f9;
+  --wf-colors-info-2:  #daecf3;
+  --wf-colors-info-3:  #c8e2ee;
+  --wf-colors-info-9:  #3a9ec3;
+  --wf-colors-info-10: #3189a9;
+  --wf-colors-info-11: #206078;
+
+  --wf-colors-success-1:  #eff8ed;
+  --wf-colors-success-2:  #dff2db;
+  --wf-colors-success-9:  #5ab847;
+  --wf-colors-success-10: #4da03d;
+  --wf-colors-success-11: #295B1F;
+
+  --wf-colors-error-1:  #ffeeec;
+  --wf-colors-error-2:  #ffddd9;
+  --wf-colors-error-9:  #ef4444;
+  --wf-colors-error-11: #942626;
+
+  --wf-colors-warning-1:  #fdfaee;
+  --wf-colors-warning-2:  #fbf5dc;
+  --wf-colors-warning-9:  #ebc728;
+  --wf-colors-warning-10: #ccad21;
+  --wf-colors-warning-11: #917A15;
+
+  /* ── Alpha utility colours ─────────────────────────────────────────── */
+  --wf-colors-gray-alpha-1: rgba(140, 140, 140, 0.05);
+  --wf-colors-gray-alpha-2: rgba(140, 140, 140, 0.1);
+  --wf-colors-gray-alpha-3: rgba(140, 140, 140, 0.15);
+  --wf-colors-gray-alpha-4: rgba(140, 140, 140, 0.2);
+
+  --wf-colors-green-alpha-2: rgba(118, 155, 8, 0.1);
+  --wf-colors-green-alpha-3: rgba(118, 155, 8, 0.15);
+  --wf-colors-green-alpha-4: rgba(118, 155, 8, 0.2);
+
+  --wf-colors-black-alpha-1: rgba(0, 0, 0, 0.05);
+  --wf-colors-black-alpha-2: rgba(0, 0, 0, 0.1);
+
+  --wf-colors-white-alpha-9: rgba(255, 255, 255, 0.7);
+  --wf-colors-white-alpha-11: rgba(255, 255, 255, 0.9);
+
+  /* ── Surface / text / border roles ─────────────────────────────────── */
+  --wf-colors-background-default:     #ffffff;
+  --wf-colors-background-disabled:    #ebebeb;
+  --wf-colors-background-white-space: #f2f2f2;
+  --wf-colors-background-segment:     #ffffff;
+  --wf-colors-background-overlay:     rgba(0, 0, 0, 0.6);
+  --wf-colors-background-separator:   #CACACB;
+
+  --wf-colors-text-default:   #000000;
+  --wf-colors-text-secondary: #ffffff;
+  --wf-colors-text-grey:      #474748;
+  --wf-colors-text-link:      #2D1D96;
+  --wf-colors-text-disabled:  #8c8c8c;
+
+  --wf-colors-border-default: #dedede;
+
+  /* ── Spacing scale ─────────────────────────────────────────────────── */
+  --wf-spacings-1: 4px;
+  --wf-spacings-2: 8px;
+  --wf-spacings-3: 10px;
+  --wf-spacings-4: 14px;
+  --wf-spacings-5: 21px;
+  --wf-spacings-6: 28px;
+  --wf-spacings-7: 40px;
+  --wf-spacings-8: 48px;
+  --wf-spacings-9: 64px;
+
+  /* ── Typography ────────────────────────────────────────────────────── */
+  --wf-typography-base:   14px;
+  --wf-typography-family: 'Signika', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --wf-typography-weight-regular: 400;
+  --wf-typography-weight-medium:  500;
+  --wf-typography-weight-bold:    700;
+
+  --wf-typography-size-1: 12px;
+  --wf-typography-size-2: 14px;
+  --wf-typography-size-3: 16px;
+  --wf-typography-size-4: 18px;
+  --wf-typography-size-5: 20px;
+  --wf-typography-size-6: 24px;
+  --wf-typography-size-7: 28px;
+  --wf-typography-size-8: 35px;
+
+  --wf-typography-line-height-1: 16px;
+  --wf-typography-line-height-2: 20px;
+  --wf-typography-line-height-3: 24px;
+  --wf-typography-line-height-4: 26px;
+  --wf-typography-line-height-5: 28px;
+  --wf-typography-line-height-6: 30px;
+  --wf-typography-line-height-7: 36px;
+  --wf-typography-line-height-8: 40px;
+
+  /* ── Shadows ───────────────────────────────────────────────────────── */
+  --wf-shadows-1: 0px 1.5px 4px 0px rgba(0,0,0,0.10) inset, 0px 1.5px 3px 0px rgba(78,53,242,0.05) inset;
+  --wf-shadows-2: 0px 4px 6px 0px rgba(0,0,0,0.05), 0px 2px 5px 0px rgba(78,53,242,0.05);
+  --wf-shadows-3: 0px 8px 20px -8px rgba(0,0,0,0.05), 0px 5px 18px 0px rgba(0,0,0,0.05), 0px 2px 20px -2px rgba(78,53,242,0.05);
+  --wf-shadows-4: 0px 12px 32px -16px rgba(0,0,0,0.10), 0px 8px 40px 0px rgba(78,53,242,0.05);
+  --wf-shadows-5: 0px 12px 32px -16px rgba(0,0,0,0.10), 0px 12px 60px 0px rgba(78,53,242,0.05);
+  --wf-shadows-6: 0px 16px 36px -9px rgba(0,0,0,0.10), 0px 16px 64px 0px rgba(78,53,242,0.05), 0px 12px 60px 0px rgba(0,0,0,0.05);
+  --wf-shadows-button: 0px 4px 20px -10px rgba(0,0,0,0.05), 0px 3px 15px -8px rgba(0,0,0,0.05), 0px 2px 3px -2px rgba(140,140,140,0.05);
+
+  /* ── Borders ───────────────────────────────────────────────────────── */
+  --wf-borders-radius-0:      0px;
+  --wf-borders-radius-1:      4.5px;
+  --wf-borders-radius-2:      10px;
+  --wf-borders-radius-3:      15.5px;
+  --wf-borders-radius-round:  9999px;
+  --wf-borders-size-0: 0px;
+  --wf-borders-size-1: 0.5px;
+  --wf-borders-size-2: 1px;
+  --wf-borders-size-3: 5px;
+
+  /* ── z-index scale ─────────────────────────────────────────────────── */
+  --wf-z-index-modal:    2000;
+  --wf-z-index-drawer:   1000;
+  --wf-z-index-popup:    3000;
+  --wf-z-index-select:   4000;
+  --wf-z-index-dropdown: 4000;
+  --wf-z-index-tooltip:  5000;
+  --wf-z-index-toast:    6000;
+}
