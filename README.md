@@ -1,6 +1,10 @@
 # WISEflow API — Integration Packages
 
-Downloadable, runnable workflow scripts that demonstrate the most common WISEflow API integration patterns. Each package is a standalone Python script (+ Postman collection) that executes a real end-to-end workflow against the WISEflow API.
+Runnable, end-to-end workflow scripts for the four most common WISEflow API integration patterns — built to take an institution from *"we have API credentials"* to *"our SIS talks to WISEflow"* in hours, not weeks.
+
+Each package is a standalone Python script (+ Postman collection) that executes a real workflow against the WISEflow API, with sample data, step-by-step output, and an animated preview on the [companion site](https://alexmeiling.github.io/wiseflow-api-integration-packages/).
+
+**Who is this for?** Integration developers and technical staff at institutions connecting their SIS/LMS to WISEflow — and anyone evaluating what a WISEflow integration involves before writing production code.
 
 > **WISEflow API version:** 1.34.0 (OAS 3.0)  
 > **Package version:** see `compatibility.json`
@@ -15,6 +19,26 @@ Downloadable, runnable workflow scripts that demonstrate the most common WISEflo
 | 02 | [Flow Management](packages/02-flow-management/) | Create exam flows, set dates/description, activate |
 | 03 | [User Allocation](packages/03-user-allocation/) | Enrol participants, add assessors, create groups, allocate |
 | 04 | [Grade Passback](packages/04-grade-passback/) | Fetch submissions & marks, transform, push to SIS/LMS |
+
+### Which package do I need?
+
+| If you want to… | Start with |
+|-----------------|------------|
+| Provision students/staff from your SIS or HR system | **01** |
+| Create and configure exam flows from your exam planning system | **02** |
+| Enrol students and allocate examiners onto existing flows | **03** |
+| Return final grades to your SIS/LMS after assessment | **04** |
+| See the full SIS ↔ WISEflow lifecycle without writing code | **FADS** (below) |
+
+The packages mirror the natural integration lifecycle: **01 → 02 → 03 → 04** covers users in, exams set up, people allocated, grades out.
+
+---
+
+## FADS — try the integration without an integration
+
+[**FADS** (Fictitious Assessment Data Store)](https://alexmeiling.github.io/wiseflow-api-integration-packages/fads.html) is a browser-based mock SIS for the imaginary *WISEflow UNIversity*. It generates a realistic student database (students, exams, enrolments, staff — 100 % fictional, persisted in your browser) and simulates the three core workflows — user provisioning, exam enrolment, and grade passback — showing the exact API requests and responses a real integration would exchange.
+
+Use it in demos, onboarding sessions, and integration design workshops to align stakeholders on the data flow **before** anyone writes code. No backend, no credentials, no risk.
 
 ---
 
@@ -94,6 +118,8 @@ wiseflow-integration-packages/
 │   ├── 03-user-allocation/
 │   └── 04-grade-passback/
 ├── web/                            # GitHub Pages site
+│   ├── index.html                  # Package overview + animated previews
+│   └── fads.html / fads.js         # FADS — mock SIS demo app
 ├── docs/
 │   ├── CHANGELOG.md
 │   └── api-spec-snapshot.yaml      # Committed API spec for diff tracking
