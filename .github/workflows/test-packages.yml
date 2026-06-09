@@ -62,6 +62,9 @@ jobs:
     name: Detect WISEflow API spec changes
     runs-on: ubuntu-latest
     # Runs independently of script tests so a cred-less fork can still check the spec
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v4
 
@@ -70,19 +73,25 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install openapi-diff
-        run: pip install openapi-diff-tool 2>/dev/null || pip install deepdiff pyyaml requests
+      - name: Install diff dependencies
+        run: pip install deepdiff pyyaml
 
       - name: Download current API spec
+        id: fetch
         run: |
-          curl -fsSL https://docs.wiseflow.net/uniwise.yaml -o /tmp/wiseflow-latest.yaml \
-            || echo "WARNING: Could not fetch API spec — skipping diff" && exit 0
+          if curl -fsSL https://docs.wiseflow.net/uniwise.yaml -o /tmp/wiseflow-latest.yaml; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Could not fetch API spec — skipping diff"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Diff against committed snapshot
         id: diff
+        if: steps.fetch.outputs.available == 'true'
         run: |
           python - <<'EOF'
-          import sys, yaml, json
+          import os, sys, yaml
           from deepdiff import DeepDiff
 
           try:
@@ -102,14 +111,14 @@ jobs:
               with open('/tmp/spec-diff.json', 'w') as f:
                   f.write(summary)
               # Signal that an issue should be opened
-              with open('/tmp/has-diff', 'w') as f:
-                  f.write('1')
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write('has_diff=true\n')
           else:
               print("✓ API spec unchanged since last snapshot.")
           EOF
 
       - name: Open GitHub Issue on spec change
-        if: ${{ hashFiles('/tmp/has-diff') != '' }}
+        if: steps.diff.outputs.has_diff == 'true'
         uses: actions/github-script@v7
         with:
           script: |
