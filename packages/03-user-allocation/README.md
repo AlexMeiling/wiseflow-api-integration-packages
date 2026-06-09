@@ -36,7 +36,7 @@ Before running this workflow, ensure:
 
 | Item | Endpoint | Notes |
 |------|----------|-------|
-| Assessor IDs | `GET /licence/` or user database | User IDs for graders/examiners |
+| Assessor IDs | — (see Package 01 or your user database) | User IDs for graders/examiners |
 | Reviewer IDs | — | User IDs for review-stage participants (if applicable) |
 
 ## What this package does

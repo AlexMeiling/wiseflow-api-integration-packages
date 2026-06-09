@@ -8,9 +8,9 @@ Before running this workflow, ensure you have retrieved the following identifier
 
 | Prerequisite | API Endpoints | Notes |
 |--------------|---------------|-------|
-| **Flow Type ID** | `GET /licence/flow-types` | Determine which exam types are available in your licence |
-| **Flow Purpose ID** | `GET /licence/flow-purposes` | Select the appropriate flow purpose for your use case |
-| **Grading Scale ID** | `GET /licence/grading-scale` | Identify the grading framework (numeric, alpha, custom) |
+| **Flow Type ID** | `GET /license/flow-types` | Determine which exam types are available in your licence |
+| **Flow Purpose ID** | `GET /license/flow-purposes` | Select the appropriate flow purpose for your use case |
+| **Grading Scale ID** | `GET /license/grading-scales` | Identify the grading framework (numeric, alpha, custom) |
 | **Assessor Types** | `GET /flows/{flowId}/assessors` | (Retrieved after flow creation to configure assessment roles) |
 | **OAuth2 credentials** | — | Must have `flow creation` and `flow management` permissions |
 
@@ -18,7 +18,7 @@ Before running this workflow, ensure you have retrieved the following identifier
 
 This package demonstrates two creation patterns:
 
-1. **Simple**: `POST /licence/create/flow` — Start from scratch
+1. **Simple**: `POST /license/create/flow` — Start from scratch
 2. **Template**: `POST /flows/{flowId}/copy` — Clone an existing flow as a template
 
 ## What this package does

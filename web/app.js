@@ -22,8 +22,8 @@ const PACKAGES = [
       'Automate user account synchronisation with your institution\'s SIS. ' +
       'Discover roles and custom data types, then create/update users and manage deactivation.',
     prerequisites: [
-      { item: 'User Roles defined', endpoint: 'GET /licence/roles', notes: 'Retrieve available roleIds from your WISEflow licence' },
-      { item: 'User Data Types available', endpoint: 'GET /licence/user-data-types', notes: 'Identify custom userDataTypeIds for PATCH operations' },
+      { item: 'User Roles defined', endpoint: 'GET /license/roles', notes: 'Retrieve available roleIds from your WISEflow licence' },
+      { item: 'User Data Types available', endpoint: 'GET /license/user-data-types', notes: 'Identify custom userDataTypeIds for PATCH operations' },
       { item: 'OAuth2 credentials', endpoint: '—', notes: 'Must have `user management` permission on the licence' },
     ],
     steps: [
@@ -69,9 +69,9 @@ const PACKAGES = [
     title: 'Flow Management',
     subtitle: 'Creating & managing flows',
     prerequisites: [
-      { item: 'Flow Type ID', endpoint: 'GET /licence/flow-types', notes: 'Determine which exam types are available in your licence' },
-      { item: 'Flow Purpose ID', endpoint: 'GET /licence/flow-purposes', notes: 'Select the appropriate flow purpose for your use case' },
-      { item: 'Grading Scale ID', endpoint: 'GET /licence/grading-scale', notes: 'Identify the grading framework (numeric, alpha, custom)' },
+      { item: 'Flow Type ID', endpoint: 'GET /license/flow-types', notes: 'Determine which exam types are available in your licence' },
+      { item: 'Flow Purpose ID', endpoint: 'GET /license/flow-purposes', notes: 'Select the appropriate flow purpose for your use case' },
+      { item: 'Grading Scale ID', endpoint: 'GET /license/grading-scales', notes: 'Identify the grading framework (numeric, alpha, custom)' },
       { item: 'OAuth2 credentials', endpoint: '—', notes: 'Must have `flow creation` and `flow management` permissions' },
     ],
     color: '#769b08',
