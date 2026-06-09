@@ -48,6 +48,24 @@ Format: `[Package version] — WISEflow API version — Date`
 
 ---
 
+## [1.0.2] — API 1.34.0 — 2026-06-10
+
+### Added
+- **FADS (Fictitious Assessment Data Store)**: browser-based mock SIS demo app on the Pages site — simulates user provisioning, exam enrolment, and grade passback with realistic mock API requests/responses (IndexedDB, 100 % client-side, fictional data)
+- `LICENSE` file (MIT) — previously referenced from README but missing
+- README: audience statement, "Which package do I need?" decision guide, FADS section
+
+### Changed
+- Site rebranded to the WISEflow design token system (Signika, brand palette, logo assets)
+- `shared/auth.py`: clear error message when required environment variables are missing; documented 401-retry pattern via `invalidate_cache()`
+- Package `VERSION` constants and `compatibility.json` aligned with the changelog (1.0.1 bump was missed)
+
+### Fixed
+- Endpoint references in READMEs and website corrected to match the API spec: `/license/…` (not `/licence/…`), `/license/grading-scales` (not `/licence/grading-scale`)
+- CI `spec-diff`: GitHub issue on spec change was never created (`hashFiles()` does not work on `/tmp`); replaced with step outputs, fixed curl error-handling precedence, added `issues: write` permission
+
+---
+
 ## Upcoming
 
 Subscribe to [SYCAmore](https://sycamore.wiseflow.net) for advance notice of WISEflow API changes

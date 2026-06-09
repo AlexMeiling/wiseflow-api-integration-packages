@@ -41,7 +41,7 @@ load_dotenv(ROOT / ".env")          # fallback to repo-root .env
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.0"
+VERSION = "1.0.2"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 
 # Accumulates step results — written to run_results.json at end

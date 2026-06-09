@@ -47,7 +47,7 @@ load_dotenv(ROOT / ".env")
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.0"
+VERSION = "1.0.2"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 FLOW_ID = os.environ.get("WISEFLOW_FLOW_ID", "REPLACE_WITH_FLOW_ID")
 SIS_ENDPOINT = os.environ.get("SIS_ENDPOINT", "")
