@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FADS — WISEflow UNIversity Mock SIS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="FADS — Fictitious Assessment Data Store. A mock Student Information System for WISEflow UNIversity demonstrating user provisioning, exam enrolment, and grade passback workflows." />
+  <meta name="theme-color" content="#769b08" />
+  <link rel="icon" type="image/svg+xml" href="assets/wiseflow-mark.svg" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="fads.css?v=5" />
+</head>
+<body>
+
+  <!-- ── Top nav ─────────────────────────────────────────────────────────── -->
+  <header class="topnav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <img class="brand-logo" src="assets/wiseflow-mark.svg" alt="WISEflow" width="40" height="40" />
+        <span class="brand-name">WISEflow Integration Packages</span>
+        <span class="brand-badge">API 1.34.0</span>
+      </div>
+      <nav class="nav-links" aria-label="Package navigation">
+        <a href="index.html#pkg-users">01 Users</a>
+        <a href="index.html#pkg-flows">02 Flows</a>
+        <a href="index.html#pkg-participants">03 Allocation</a>
+        <a href="index.html#pkg-grades">04 Grades</a>
+        <a href="fads.html" class="nav-fads-link">FADS</a>
+        <a href="https://docs.wiseflow.net/" target="_blank" rel="noopener" class="nav-api-link">
+          API Docs ↗
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ── FADS Hero ───────────────────────────────────────────────────────── -->
+  <section class="fads-hero">
+    <div class="fads-hero-inner">
+      <div class="fads-hero-text">
+        <h1>FADS — Fictitious Assessment Data Store</h1>
+        <p class="fads-hero-subtitle">WISEflow UNIversity &middot; Mock SIS</p>
+        <span id="seed-status" class="seed-status"></span>
+      </div>
+      <div class="fads-stats">
+        <div class="fads-stat">
+          <span id="stat-students" class="stat-value">—</span>
+          <span class="stat-label">Students</span>
+        </div>
+        <div class="fads-stat">
+          <span id="stat-exams" class="stat-value">—</span>
+          <span class="stat-label">Exams</span>
+        </div>
+        <div class="fads-stat">
+          <span id="stat-enrolments" class="stat-value">—</span>
+          <span class="stat-label">Enrolments</span>
+        </div>
+        <div class="fads-stat">
+          <span id="stat-staff" class="stat-value">—</span>
+          <span class="stat-label">Staff</span>
+        </div>
+      </div>
+      <button class="btn-secondary" onclick="resetDatabase()">&#8635; Reset DB</button>
+    </div>
+  </section>
+
+  <!-- ── Toast container ─────────────────────────────────────────────────── -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ── Slide-in drawer ─────────────────────────────────────────────────── -->
+  <div id="drawer-overlay" class="drawer-overlay" role="presentation"></div>
+  <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-header">
+      <h2 id="drawer-title"></h2>
+      <button id="drawer-close" class="drawer-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+  </aside>
+
+  <!-- ── Modal ───────────────────────────────────────────────────────────── -->
+  <div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button id="modal-cancel" class="btn-secondary">Cancel</button>
+        <button id="modal-confirm" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main application ────────────────────────────────────────────────── -->
+  <main class="fads-app">
+
+    <!-- Tab bar -->
+    <div class="tab-bar" role="tablist">
+      <button class="tab-btn active" data-tab="students"    role="tab" aria-selected="true">Students</button>
+      <button class="tab-btn"        data-tab="exams"       role="tab" aria-selected="false">Exams</button>
+      <button class="tab-btn"        data-tab="enrolments"  role="tab" aria-selected="false">Enrolments</button>
+      <button class="tab-btn"        data-tab="api-console" role="tab" aria-selected="false">API Console</button>
+    </div>
+
+    <!-- ── Students panel ──────────────────────────────────────────────── -->
+    <div id="tab-students" class="tab-panel active" role="tabpanel">
+      <div class="tab-toolbar">
+        <input id="students-search" type="search" placeholder="Search students…" class="search-input" aria-label="Search students" />
+        <span id="students-count" class="count-label"></span>
+        <div class="toolbar-actions">
+          <button class="btn-secondary" onclick="seedMoreStudents()">+ Seed 10 more</button>
+          <button class="btn-secondary" onclick="exportStudentsJSON()">Export JSON</button>
+          <button class="btn-primary"   onclick="addStudentModal()">+ Add Student</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>WF-ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Programme</th>
+              <th>Year</th>
+              <th>Status</th>
+              <th>WF Provisioned</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-tbody">
+            <tr><td colspan="8" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Exams panel ─────────────────────────────────────────────────── -->
+    <div id="tab-exams" class="tab-panel" role="tabpanel">
+      <div class="tab-toolbar">
+        <input id="exams-search" type="search" placeholder="Search exams…" class="search-input" aria-label="Search exams" />
+        <span id="exams-count" class="count-label"></span>
+        <div class="toolbar-actions">
+          <button class="btn-primary" onclick="addExamModal()">+ Add Exam</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Exam Code</th>
+              <th>Title</th>
+              <th>Flow Type</th>
+              <th>Type</th>
+              <th>Faculty</th>
+              <th>Status</th>
+              <th>Start Date</th>
+              <th>WF Provisioned</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="exams-tbody">
+            <tr><td colspan="9" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Enrolments panel ─────────────────────────────────────────────── -->
+    <div id="tab-enrolments" class="tab-panel" role="tabpanel">
+      <div class="tab-toolbar">
+        <select id="enrol-exam-filter" class="search-input" aria-label="Filter by exam">
+          <option value="">All exams</option>
+        </select>
+        <span id="enrolments-count" class="count-label"></span>
+        <div class="toolbar-actions">
+          <button class="btn-secondary" onclick="syncAllUnprovisioned()">Sync all unprovisioned</button>
+          <button class="btn-secondary" onclick="passbackAllGrades()">Passback all grades</button>
+          <button class="btn-primary"   onclick="enrolStudentModal()">+ Enrol Student</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Exam Code</th>
+              <th>Exam Title</th>
+              <th>Status</th>
+              <th>WF Synced</th>
+              <th>Grade</th>
+              <th>Passed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="enrolments-tbody">
+            <tr><td colspan="8" class="empty-row">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── API Console panel ─────────────────────────────────────────────── -->
+    <div id="tab-api-console" class="tab-panel" role="tabpanel">
+      <div class="api-console">
+
+        <!-- Workflow stepper -->
+        <div class="workflow-stepper">
+          <div class="wf-step"><span class="wf-step-num">01</span><span class="wf-step-label">User Provisioning</span></div>
+          <span class="wf-step-arrow">→</span>
+          <div class="wf-step"><span class="wf-step-num">02</span><span class="wf-step-label">Flow Provisioning</span></div>
+          <span class="wf-step-arrow">→</span>
+          <div class="wf-step"><span class="wf-step-num">03</span><span class="wf-step-label">Exam Enrolment</span></div>
+          <span class="wf-step-arrow">→</span>
+          <div class="wf-step"><span class="wf-step-num">04</span><span class="wf-step-label">Grade Passback</span></div>
+        </div>
+
+        <!-- Workflow 01: User Provisioning -->
+        <div class="workflow-panel">
+          <div class="workflow-header">
+            <span class="workflow-num">01</span>
+            <div>
+              <h3>User Provisioning</h3>
+              <p>POST /license/user &mdash; Create or update a user on the WISEflow licence</p>
+            </div>
+          </div>
+          <div class="workflow-body">
+            <div class="workflow-students">
+              <label class="field-label">Select students to provision:</label>
+              <div id="api-w1-students" class="checkbox-list"></div>
+              <div class="workflow-controls">
+                <button class="btn-secondary" onclick="buildW1Preview()">Preview</button>
+                <button class="btn-primary"   onclick="sendW1()">Send &#8599;</button>
+              </div>
+            </div>
+            <div class="api-blocks">
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-post">POST</span>
+                  <span id="api-w1-url" class="api-url">/license/user</span>
+                  <span class="api-block-label">Request</span>
+                  <button class="btn-copy" onclick="copyCode('api-w1-request')">Copy</button>
+                </div>
+                <div class="api-base-url-bar"><span class="api-base-url-label">Base URL</span> https://europe-api.wiseflow.net/v1</div>
+                <div class="api-auth-header"></div>
+                <pre id="api-w1-request" class="api-code"><span class="jc">// Select students above to preview request</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">201</span>
+                  <span class="api-block-label">Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-w1-response')">Copy</button>
+                </div>
+                <pre id="api-w1-response" class="api-code"><span class="jc">// Response will appear here after Send</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="workflow-connector" aria-hidden="true">↓</div>
+
+        <!-- Workflow 02: Flow Provisioning -->
+        <div class="workflow-panel">
+          <div class="workflow-header">
+            <span class="workflow-num">02</span>
+            <div>
+              <h3>Flow Provisioning <span class="dep-chip">Requires 01</span></h3>
+              <p>POST /license/create/flow &rarr; PATCH /flows/{id}/dates &rarr; PATCH /flows/{id}/activate</p>
+            </div>
+          </div>
+          <div class="workflow-body">
+            <div class="workflow-students">
+              <label class="field-label">Select exam to provision:</label>
+              <select id="api-wfp-exam" class="search-input" onchange="loadWfpFlow()">
+                <option value="">— Select unprovisioned exam —</option>
+              </select>
+              <span id="api-wfp-info" class="info-label"></span>
+              <p class="workflow-note">Creates the WISEflow flow, sets exam window dates, then activates it. Run once per exam.</p>
+              <div class="workflow-controls">
+                <button class="btn-primary" onclick="sendWfp()">Provision Flow &#8599;</button>
+              </div>
+            </div>
+            <div class="api-blocks">
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-post">POST</span>
+                  <span id="api-wfp-create-url" class="api-url">/license/create/flow</span>
+                  <span class="api-block-label">Step 1 — Create</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-create-request')">Copy</button>
+                </div>
+                <div class="api-base-url-bar"><span class="api-base-url-label">Base URL</span> https://europe-api.wiseflow.net/v1</div>
+                <div class="api-auth-header"></div>
+                <pre id="api-wfp-create-request" class="api-code"><span class="jc">// Select an exam above</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">201</span>
+                  <span class="api-block-label">Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-create-response')">Copy</button>
+                </div>
+                <pre id="api-wfp-create-response" class="api-code"><span class="jc">// Flow created</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-patch">PATCH</span>
+                  <span id="api-wfp-dates-url" class="api-url">/flows/{flowId}/dates</span>
+                  <span class="api-block-label">Step 2 — Set dates</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-dates-request')">Copy</button>
+                </div>
+                <div class="api-base-url-bar"><span class="api-base-url-label">Base URL</span> https://europe-api.wiseflow.net/v1</div>
+                <div class="api-auth-header"></div>
+                <pre id="api-wfp-dates-request" class="api-code"><span class="jc">// Select an exam above</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">200</span>
+                  <span class="api-block-label">Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-dates-response')">Copy</button>
+                </div>
+                <pre id="api-wfp-dates-response" class="api-code"><span class="jc">// Dates updated</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-patch">PATCH</span>
+                  <span id="api-wfp-activate-url" class="api-url">/flows/{flowId}/activate</span>
+                  <span class="api-block-label">Step 3 — Activate</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-activate-request')">Copy</button>
+                </div>
+                <div class="api-base-url-bar"><span class="api-base-url-label">Base URL</span> https://europe-api.wiseflow.net/v1</div>
+                <div class="api-auth-header"></div>
+                <pre id="api-wfp-activate-request" class="api-code"><span class="jc">// Empty body</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">200</span>
+                  <span class="api-block-label">Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-wfp-activate-response')">Copy</button>
+                </div>
+                <pre id="api-wfp-activate-response" class="api-code"><span class="jc">// Flow activated</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="workflow-connector" aria-hidden="true">↓</div>
+
+        <!-- Workflow 03: Exam Enrolment -->
+        <div class="workflow-panel">
+          <div class="workflow-header">
+            <span class="workflow-num">03</span>
+            <div>
+              <h3>Exam Enrolment <span class="dep-chip">Requires 02</span></h3>
+              <p>POST /flows/{flowId}/participants &mdash; Enrol a student in a WISEflow exam flow</p>
+            </div>
+          </div>
+          <div class="workflow-body">
+            <div class="workflow-students">
+              <label class="field-label">Select provisioned exam:</label>
+              <select id="api-w2-exam" class="search-input" onchange="loadW2Participants()">
+                <option value="">— Select provisioned exam —</option>
+              </select>
+              <span id="api-w2-info" class="info-label"></span>
+              <div class="workflow-controls">
+                <button class="btn-primary" onclick="sendW2()">Send &#8599;</button>
+              </div>
+            </div>
+            <div class="api-blocks">
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-post">POST</span>
+                  <span id="api-w2-url" class="api-url">/flows/{flowId}/participants</span>
+                  <span class="api-block-label">Request</span>
+                  <button class="btn-copy" onclick="copyCode('api-w2-request')">Copy</button>
+                </div>
+                <div class="api-base-url-bar"><span class="api-base-url-label">Base URL</span> https://europe-api.wiseflow.net/v1</div>
+                <div class="api-auth-header"></div>
+                <pre id="api-w2-request" class="api-code"><span class="jc">// Select an exam above to preview request</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">201</span>
+                  <span class="api-block-label">Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-w2-response')">Copy</button>
+                </div>
+                <pre id="api-w2-response" class="api-code"><span class="jc">// Response will appear here after Send</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="workflow-connector" aria-hidden="true">↓</div>
+
+        <!-- Workflow 04: Grade Passback (SIS pulls grades FROM WISEflow) -->
+        <div class="workflow-panel">
+          <div class="workflow-header">
+            <span class="workflow-num">04</span>
+            <div>
+              <h3>Grade Passback <span class="dep-chip">Requires 03</span></h3>
+              <p>GET /flows/{flowId}/submissions &rarr; GET /flows/{flowId}/participants/{pId}/item-based-marks</p>
+            </div>
+          </div>
+          <div class="workflow-body">
+            <div class="workflow-students">
+              <label class="field-label">Select completed exam:</label>
+              <select id="api-w3-exam" class="search-input" onchange="loadW3Grades()">
+                <option value="">— Select exam with grades —</option>
+              </select>
+              <span id="api-w3-info" class="info-label"></span>
+              <p class="workflow-note">The SIS polls WISEflow to retrieve submissions and marks, then stores them locally.</p>
+              <div class="workflow-controls">
+                <button class="btn-primary" onclick="sendW3()">Pull Grades &#8595;</button>
+              </div>
+            </div>
+            <div class="api-blocks">
+              <!-- Step A: GET submissions -->
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-get">GET</span>
+                  <span id="api-w3-url" class="api-url">/flows/{flowId}/submissions</span>
+                  <span class="api-block-label">Step A — Request</span>
+                  <button class="btn-copy" onclick="copyCode('api-w3-request')">Copy</button>
+                </div>
+                <div class="api-auth-header"></div>
+                <pre id="api-w3-request" class="api-code"><span class="jc">// No body — GET request</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">200</span>
+                  <span class="api-block-label">Step A — Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-w3-response')">Copy</button>
+                </div>
+                <pre id="api-w3-response" class="api-code"><span class="jc">// Select a completed exam above</span></pre>
+              </div>
+              <!-- Step B: GET item-based-marks -->
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="method-badge method-get">GET</span>
+                  <span id="api-w3-marks-url" class="api-url">/flows/{flowId}/participants/{pId}/item-based-marks</span>
+                  <span class="api-block-label">Step B — Request</span>
+                </div>
+                <div class="api-auth-header"></div>
+                <pre class="api-code"><span class="jc">// No body — GET request</span></pre>
+              </div>
+              <div class="api-block">
+                <div class="api-block-header">
+                  <span class="status-badge status-2xx">200</span>
+                  <span class="api-block-label">Step B — Response</span>
+                  <button class="btn-copy" onclick="copyCode('api-w3-marks-response')">Copy</button>
+                </div>
+                <pre id="api-w3-marks-response" class="api-code"><span class="jc">// Grade details for one participant</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- API log -->
+        <div class="api-log-section">
+          <h3>Recent API calls</h3>
+          <div id="api-log" class="api-log">
+            <div class="log-empty">No API calls yet &mdash; use the workflows above or the Provision buttons in other tabs.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script src="fads.js?v=4"></script>
+</body>
+</html>
