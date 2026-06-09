@@ -6,7 +6,9 @@ All code/doc fixes are already committed locally on `main`.
 
 ## 1. Push and verify CI (highest priority)
 
-- [ ] `git push origin main` (local is several commits ahead).
+- [ ] Housekeeping first: the sandboxed session could not delete git lock files —
+      run `rm -f .git/*.lock .git/stale-* .git/objects/stale-*` before further git work.
+- [ ] `git push origin main` (local is 9 commits ahead).
 - [ ] Verify the **pages.yml** deploy succeeds and the live site renders correctly
       (rebrand + FADS page + new FADS teaser section on index).
 - [ ] Verify **test-packages.yml** runs green. The `spec-diff` job was rewritten
