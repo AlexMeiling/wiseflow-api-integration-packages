@@ -30,12 +30,23 @@ def get_headers() -> dict:
 
     Fetches a new token only when the cached one is absent or within 30 s of
     expiry.  Raises ``requests.HTTPError`` if the token endpoint returns an
-    error, and ``KeyError`` if required environment variables are missing.
+    error, and ``RuntimeError`` if required environment variables are missing.
+
+    If the API later rejects the token with HTTP 401 (e.g. revoked server-side),
+    call ``invalidate_cache()`` and retry the request once with fresh headers.
     """
     now = time.monotonic()
 
     if _cache["access_token"] and now < _cache["expires_at"] - 30:
         return {"Authorization": f"Bearer {_cache['access_token']}"}
+
+    required = ("WISEFLOW_BASE_URL", "WISEFLOW_CLIENT_ID", "WISEFLOW_CLIENT_SECRET")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(
+            f"Missing environment variable(s): {', '.join(missing)}. "
+            "Copy .env.example to .env in the package directory and fill in your credentials."
+        )
 
     base_url = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
     client_id = os.environ["WISEFLOW_CLIENT_ID"]
