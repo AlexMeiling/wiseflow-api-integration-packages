@@ -4,13 +4,14 @@ WISEflow Integration Package 02 — Flow Management
 Demonstrates creating and configuring an exam flow end-to-end:
 
   Step 1  GET  /license/flow-types          Discover available flow types
-  Step 2  GET  /license/flow-purposes       Discover available flow purposes
-  Step 3  POST /license/create/flow         Create a new flow (draft)
-  Step 4  GET  /flow/{flowId}               Verify the flow was created
-  Step 5  PATCH /flows/{flowId}/dates       Set start and end date/time
-  Step 6  PUT  /flows/{flowId}/description  Add participant-facing description
-  Step 7  GET  /flows/{flowId}/grading-scale Check the grading scale
-  Step 8  PATCH /flows/{flowId}/activate    Publish / activate the flow
+  Step 2  GET  /license/roles               Find a role for the flow manager
+  Step 3  POST /license/user                Create a manager (flows require one)
+  Step 4  POST /license/create/flow         Create a new flow (draft)
+  Step 5  GET  /flow/{flowId}               Verify the flow was created
+  Step 6  PATCH /flows/{flowId}/dates       Set participation start/end (unix)
+  Step 7  PUT  /flows/{flowId}/description  Add participant-facing description
+  Step 8  GET  /flows/{flowId}/grading-scale Check the grading scale
+  Step 9  PATCH /flows/{flowId}/activate    Publish / activate the flow
 
 Prerequisites
 -------------
@@ -28,6 +29,7 @@ import json
 import os
 import pathlib
 import sys
+import time
 
 import requests
 from dotenv import load_dotenv
@@ -41,7 +43,7 @@ load_dotenv(ROOT / ".env")
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 
 _results: list = []
@@ -64,7 +66,9 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
     print(f"  {'✓' if ok else '✗'} HTTP {resp.status_code}")
 
     try:
-        body = resp.json()
+        raw = resp.json()
+        # WISEflow wraps payloads in {"success", "data", "error"} — unwrap to the data.
+        body = raw["data"] if isinstance(raw, dict) and "success" in raw and "data" in raw else raw
         preview = json.dumps(body, indent=2)
         print("  " + preview[:500].replace("\n", "\n  ") + ("…" if len(preview) > 500 else ""))
     except ValueError:
@@ -84,58 +88,82 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
 
 def step_1_get_flow_types(ctx: dict) -> dict:
     body = _step(1, "Discover available flow types", "GET", "/license/flow-types")
-    types = body if isinstance(body, list) else body.get("flowTypes", [])
-    if not types:
+    if not body:
         raise ValueError("No flow types returned — check licence configuration.")
     # Use the first available type; in production you'd select by name/id
-    ctx["flowTypeId"] = types[0]["id"]
-    print(f"\n  → Using flow type: '{types[0].get('name', types[0]['id'])}'")
+    ctx["flowTypeId"] = body[0]["id"]
+    print(f"\n  → Using flow type: '{body[0].get('name', body[0]['id'])}'")
     return ctx
 
 
-def step_2_get_flow_purposes(ctx: dict) -> dict:
-    body = _step(2, "Discover available flow purposes", "GET", "/license/flow-purposes")
-    purposes = body if isinstance(body, list) else body.get("flowPurposes", [])
-    ctx["flowPurposeId"] = purposes[0]["id"] if purposes else None
+def step_2_get_manager_role(ctx: dict) -> dict:
+    body = _step(2, "Find a role for the flow manager", "GET", "/license/roles")
+    manager = next((r for r in body if r.get("name") == "Manager" and not r.get("isProtected")), None)
+    role = manager or next((r for r in body if not r.get("isProtected")), None)
+    if not role:
+        raise ValueError("No assignable role found to create a manager user.")
+    ctx["managerRoleId"] = role["roleId"]
     return ctx
 
 
-def step_3_create_flow(ctx: dict) -> dict:
-    payload: dict = {
-        "title": "Integration Demo — CS101 Final Exam",
-        "flowTypeId": ctx["flowTypeId"],
-    }
-    if ctx.get("flowPurposeId"):
-        payload["flowPurposeId"] = ctx["flowPurposeId"]
+def step_3_create_manager(ctx: dict) -> dict:
+    body = _step(
+        3, "Create a manager user (flows require an owner)", "POST", "/license/user",
+        json={
+            "emails": ["integration.manager@institution.edu"],
+            "firstName": "Integration",
+            "lastName": "Manager",
+            "roles": [ctx["managerRoleId"]],
+        },
+    )
+    ctx["managerId"] = body.get("userId")
+    if not ctx["managerId"]:
+        raise ValueError(f"Could not extract manager userId from response: {body}")
+    return ctx
 
-    body = _step(3, "Create new exam flow", "POST", "/license/create/flow", json=payload)
-    ctx["flowId"] = body.get("id") or body.get("flowId")
+
+def step_4_create_flow(ctx: dict) -> dict:
+    body = _step(
+        4, "Create new exam flow", "POST", "/license/create/flow",
+        json={
+            "title": "Integration Demo — CS101 Final Exam",
+            "type": ctx["flowTypeId"],
+            "managers": [ctx["managerId"]],
+        },
+    )
+    ctx["flowId"] = body.get("flowId")
     if not ctx["flowId"]:
         raise ValueError(f"Could not extract flowId from response: {body}")
     return ctx
 
 
-def step_4_verify_flow(ctx: dict) -> dict:
-    body = _step(4, "Verify flow was created", "GET", f"/flow/{ctx['flowId']}")
+def step_5_verify_flow(ctx: dict) -> dict:
+    body = _step(5, "Verify flow was created", "GET", f"/flow/{ctx['flowId']}")
     ctx["flow"] = body
     return ctx
 
 
-def step_5_set_dates(ctx: dict) -> dict:
+def step_6_set_dates(ctx: dict) -> dict:
+    # All times are unix seconds. Marking must start after participation ends —
+    # sending participation alone leaves the old marking window dangling and 500s.
+    start = int(time.time()) + 7 * 24 * 3600          # participation opens in a week
+    end = start + 3 * 3600                              # three-hour exam window
+    marking_start = end + 3600                          # marking opens an hour later
+    marking_end = marking_start + 7 * 24 * 3600         # one week to mark
     _step(
-        5, "Set exam start and end dates", "PATCH",
+        6, "Set participation and marking dates", "PATCH",
         f"/flows/{ctx['flowId']}/dates",
         json={
-            "startDate": "2026-05-15T09:00:00Z",
-            "endDate":   "2026-05-15T12:00:00Z",
+            "participation": {"start": start, "end": end},
+            "marking": {"start": marking_start, "end": marking_end},
         },
     )
     return ctx
 
 
-def step_6_set_description(ctx: dict) -> dict:
+def step_7_set_description(ctx: dict) -> dict:
     _step(
-        6, "Set participant-facing description", "PUT",
+        7, "Set participant-facing description", "PUT",
         f"/flows/{ctx['flowId']}/description",
         json={
             "description": (
@@ -148,17 +176,16 @@ def step_6_set_description(ctx: dict) -> dict:
     return ctx
 
 
-def step_7_check_grading_scale(ctx: dict) -> dict:
-    body = _step(7, "Check grading scale", "GET", f"/flows/{ctx['flowId']}/grading-scale")
+def step_8_check_grading_scale(ctx: dict) -> dict:
+    body = _step(8, "Check grading scale", "GET", f"/flows/{ctx['flowId']}/grading-scale")
     ctx["gradingScale"] = body
     return ctx
 
 
-def step_8_activate_flow(ctx: dict) -> dict:
+def step_9_activate_flow(ctx: dict) -> dict:
     _step(
-        8, "Activate (publish) the flow", "PATCH",
+        9, "Activate (publish) the flow", "PATCH",
         f"/flows/{ctx['flowId']}/activate",
-        json={},
     )
     return ctx
 
@@ -174,13 +201,14 @@ def run_workflow() -> None:
     ctx: dict = {}
     steps = [
         step_1_get_flow_types,
-        step_2_get_flow_purposes,
-        step_3_create_flow,
-        step_4_verify_flow,
-        step_5_set_dates,
-        step_6_set_description,
-        step_7_check_grading_scale,
-        step_8_activate_flow,
+        step_2_get_manager_role,
+        step_3_create_manager,
+        step_4_create_flow,
+        step_5_verify_flow,
+        step_6_set_dates,
+        step_7_set_description,
+        step_8_check_grading_scale,
+        step_9_activate_flow,
     ]
 
     try:
