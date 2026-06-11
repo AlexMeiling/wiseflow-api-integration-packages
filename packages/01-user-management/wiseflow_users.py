@@ -3,13 +3,13 @@ WISEflow Integration Package 01 — User Management
 ==================================================
 Demonstrates a full user-management workflow:
 
-  Step 1  POST /license/user              Create a new user
-  Step 2  GET  /users/{userId}            Verify the user was created
-  Step 3  GET  /license/roles             Discover available roles
-  Step 4  POST /users/{userId}/roles      Assign a role to the user
+  Step 1  GET  /license/roles             Discover available roles
+  Step 2  POST /license/user              Create a new user (roles required)
+  Step 3  GET  /users/{userId}            Verify the user was created
+  Step 4  POST /users/{userId}/roles      Assign an additional role
   Step 5  PUT  /users/{userId}            Update the user's name
   Step 6  GET  /license/user-data-types   Discover custom data field types
-  Step 7  PATCH /users/{userId}/user-data Attach a custom data value
+  Step 7  POST /users/{userId}/user-data  Attach a custom data value
 
 Prerequisites
 -------------
@@ -41,7 +41,7 @@ load_dotenv(ROOT / ".env")          # fallback to repo-root .env
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 
 # Accumulates step results — written to run_results.json at end
@@ -69,7 +69,9 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
     print(f"  {icon} HTTP {resp.status_code}")
 
     try:
-        body = resp.json()
+        raw = resp.json()
+        # WISEflow wraps payloads in {"success", "data", "error"} — unwrap to the data.
+        body = raw["data"] if isinstance(raw, dict) and "success" in raw and "data" in raw else raw
         preview = json.dumps(body, indent=2)
         print("  " + preview[:500].replace("\n", "\n  ") + ("…" if len(preview) > 500 else ""))
     except ValueError:
@@ -91,44 +93,46 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
 
 # ── workflow steps ────────────────────────────────────────────────────────────
 
-def step_1_create_user(ctx: dict) -> dict:
+def step_1_get_roles(ctx: dict) -> dict:
+    body = _step(1, "Discover available licence roles", "GET", "/license/roles")
+    roles = [r for r in body if not r.get("isProtected")]
+    if not roles:
+        raise ValueError("No assignable (non-protected) roles found on the licence.")
+    ctx["roleIds"] = [r["roleId"] for r in roles]
+    return ctx
+
+
+def step_2_create_user(ctx: dict) -> dict:
     body = _step(
-        1, "Create user", "POST", "/license/user",
+        2, "Create user", "POST", "/license/user",
         json={
-            "email": "integration.demo@institution.edu",
-            "firstname": "Integration",
-            "lastname": "Demo",
-            "eduPrincipalName": "integration.demo@institution.edu",
+            "emails": ["integration.demo@institution.edu"],
+            "firstName": "Integration",
+            "lastName": "Demo",
+            "roles": [ctx["roleIds"][0]],
         },
     )
-    # The API returns the new user's id — field name varies by tenant config
-    ctx["userId"] = body.get("id") or body.get("userId") or body.get("user_id")
+    ctx["userId"] = body.get("userId")
     if not ctx["userId"]:
         raise ValueError(f"Could not extract userId from response: {body}")
     return ctx
 
 
-def step_2_verify_user(ctx: dict) -> dict:
-    body = _step(2, "Verify user was created", "GET", f"/users/{ctx['userId']}")
+def step_3_verify_user(ctx: dict) -> dict:
+    body = _step(3, "Verify user was created", "GET", f"/users/{ctx['userId']}")
     ctx["user"] = body
     return ctx
 
 
-def step_3_get_roles(ctx: dict) -> dict:
-    body = _step(3, "Discover available licence roles", "GET", "/license/roles")
-    # Pick the first available role; in practice you'd look up the correct id
-    roles = body if isinstance(body, list) else body.get("roles", [])
-    ctx["roleId"] = roles[0]["id"] if roles else None
-    return ctx
-
-
 def step_4_assign_role(ctx: dict) -> dict:
-    if not ctx.get("roleId"):
-        print("  ⚠  No roles found on licence — skipping role assignment.")
+    # The first role was assigned at creation; assign a second one if the licence has it.
+    extra = ctx["roleIds"][1:2]
+    if not extra:
+        print("  ⚠  Only one assignable role on the licence — skipping extra assignment.")
         return ctx
     _step(
-        4, "Assign role to user", "POST", f"/users/{ctx['userId']}/roles",
-        json={"roleId": ctx["roleId"]},
+        4, "Assign an additional role to user", "POST", f"/users/{ctx['userId']}/roles",
+        json=[{"licenseRoleId": extra[0]}],
     )
     return ctx
 
@@ -137,8 +141,11 @@ def step_5_update_user(ctx: dict) -> dict:
     _step(
         5, "Update user's name", "PUT", f"/users/{ctx['userId']}",
         json={
-            "firstname": "Integration",
-            "lastname": "Demo-Updated",
+            "firstName": "Integration",
+            "lastName": "Demo-Updated",
+            "phone": "",
+            "language": "en_GB",
+            "loginDeactivated": False,
         },
     )
     return ctx
@@ -146,19 +153,19 @@ def step_5_update_user(ctx: dict) -> dict:
 
 def step_6_get_user_data_types(ctx: dict) -> dict:
     body = _step(6, "Discover custom user-data types", "GET", "/license/user-data-types")
-    types = body if isinstance(body, list) else body.get("userDataTypes", [])
-    ctx["userDataTypeId"] = types[0]["id"] if types else None
+    ctx["userDataType"] = body[0] if body else None
     return ctx
 
 
-def step_7_patch_user_data(ctx: dict) -> dict:
-    if not ctx.get("userDataTypeId"):
-        print("  ⚠  No user-data types found — skipping custom field patch.")
+def step_7_create_user_data(ctx: dict) -> dict:
+    udt = ctx.get("userDataType")
+    if not udt:
+        print("  ⚠  No user-data types found — skipping custom field creation.")
         return ctx
     _step(
-        7, "Attach a custom user-data value", "PATCH",
+        7, "Attach a custom user-data value", "POST",
         f"/users/{ctx['userId']}/user-data",
-        json=[{"userDataTypeId": ctx["userDataTypeId"], "value": "STU-2026-DEMO"}],
+        json=[{"userDataTypeId": udt["id"], "value": "STU-2026-DEMO"}],
     )
     return ctx
 
@@ -173,13 +180,13 @@ def run_workflow() -> None:
 
     ctx: dict = {}
     steps = [
-        step_1_create_user,
-        step_2_verify_user,
-        step_3_get_roles,
+        step_1_get_roles,
+        step_2_create_user,
+        step_3_verify_user,
         step_4_assign_role,
         step_5_update_user,
         step_6_get_user_data_types,
-        step_7_patch_user_data,
+        step_7_create_user_data,
     ]
 
     try:

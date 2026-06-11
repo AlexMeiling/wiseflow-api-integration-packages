@@ -34,7 +34,14 @@ def get_headers() -> dict:
 
     If the API later rejects the token with HTTP 401 (e.g. revoked server-side),
     call ``invalidate_cache()`` and retry the request once with fresh headers.
+
+    If ``WISEFLOW_API_KEY`` is set, the OAuth flow is skipped and the key is sent
+    directly via the ``x-api-key`` header instead.
     """
+    api_key = os.environ.get("WISEFLOW_API_KEY")
+    if api_key:
+        return {"x-api-key": api_key}
+
     now = time.monotonic()
 
     if _cache["access_token"] and now < _cache["expires_at"] - 30:

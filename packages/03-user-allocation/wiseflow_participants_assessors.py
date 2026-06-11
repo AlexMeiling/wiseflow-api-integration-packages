@@ -1,17 +1,19 @@
 """
 WISEflow Integration Package 03 — Participants, Assessors & Allocation
 =======================================================================
-Demonstrates enrolling participants, adding assessors, creating an assessor
-group, and allocating assessors to participants on an existing active flow.
+Demonstrates enrolling a participant, adding an assessor, and allocating the
+assessor to the participant on an existing active flow (individual allocation).
 
   Step 1  POST /flows/{flowId}/participants                          Add participant
-  Step 2  GET  /flows/{flowId}/participants                          List participants
+  Step 2  GET  /flows/{flowId}/participants                          List + resolve participantId
   Step 3  POST /flows/{flowId}/assessors                             Add assessor
-  Step 4  GET  /flows/{flowId}/assessors                             List assessors
-  Step 5  POST /flows/{flowId}/assessor-groups                       Create assessor group
-  Step 6  POST /flows/{flowId}/assessors/{aId}/allocations/participants/{pId}
+  Step 4  GET  /flows/{flowId}/assessors                             List + resolve assessorId
+  Step 5  POST /flows/{flowId}/assessors/{aId}/allocations/participants/{pId}
                                                                      Allocate assessor → participant
-  Step 7  GET  /flows/{flowId}/assessors/{aId}/allocations           Verify allocations
+  Step 6  GET  /flows/{flowId}/assessors/{aId}/allocations           Verify allocations
+
+Note: this flow uses *individual* assessor allocation. Creating assessor groups
+requires a flow configured for GROUPED allocation and is intentionally not shown.
 
 Prerequisites
 -------------
@@ -49,13 +51,17 @@ load_dotenv(ROOT / ".env")
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 
 # These IDs must be set in .env; see README for how to obtain them.
+def _maybe_int(value: str):
+    return int(value) if value.isdigit() else value
+
+
 FLOW_ID = os.environ.get("WISEFLOW_FLOW_ID", "REPLACE_WITH_FLOW_ID")
-PARTICIPANT_USER_ID = os.environ.get("WISEFLOW_PARTICIPANT_USER_ID", "REPLACE_WITH_USER_ID")
-ASSESSOR_USER_ID = os.environ.get("WISEFLOW_ASSESSOR_USER_ID", "REPLACE_WITH_ASSESSOR_USER_ID")
+PARTICIPANT_USER_ID = _maybe_int(os.environ.get("WISEFLOW_PARTICIPANT_USER_ID", "REPLACE_WITH_USER_ID"))
+ASSESSOR_USER_ID = _maybe_int(os.environ.get("WISEFLOW_ASSESSOR_USER_ID", "REPLACE_WITH_ASSESSOR_USER_ID"))
 
 _results: list = []
 
@@ -77,7 +83,9 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
     print(f"  {'✓' if ok else '✗'} HTTP {resp.status_code}")
 
     try:
-        body = resp.json()
+        raw = resp.json()
+        # WISEflow wraps payloads in {"success", "data", "error"} — unwrap to the data.
+        body = raw["data"] if isinstance(raw, dict) and "success" in raw and "data" in raw else raw
         preview = json.dumps(body, indent=2)
         print("  " + preview[:500].replace("\n", "\n  ") + ("…" if len(preview) > 500 else ""))
     except ValueError:
@@ -96,82 +104,71 @@ def _step(num: int, label: str, method: str, path: str, **kwargs):
 # ── workflow steps ────────────────────────────────────────────────────────────
 
 def step_1_add_participant(ctx: dict) -> dict:
+    # POST returns 200 even if the user is already enrolled (error ALREADY_ON_FLOW),
+    # and the participant id is present in either case.
     body = _step(
         1, "Add participant to flow", "POST",
         f"/flows/{FLOW_ID}/participants",
-        json={"userId": PARTICIPANT_USER_ID},
+        json=[{"userId": PARTICIPANT_USER_ID}],
     )
-    ctx["participantId"] = body.get("id") or body.get("participantId")
+    item = body[0] if isinstance(body, list) and body else {}
+    if item.get("error") and item["error"] != "ALREADY_ON_FLOW":
+        raise ValueError(f"Could not add participant: {item['error']}")
+    if item.get("participant"):
+        ctx["participantId"] = item["participant"]["id"]
     return ctx
 
 
 def step_2_list_participants(ctx: dict) -> dict:
     body = _step(2, "List participants on flow", "GET", f"/flows/{FLOW_ID}/participants")
-    participants = body if isinstance(body, list) else body.get("participants", [])
-    print(f"\n  → {len(participants)} participant(s) enrolled.")
-    # Resolve participantId from list if not returned by POST
-    if not ctx.get("participantId") and participants:
-        match = [p for p in participants if p.get("userId") == PARTICIPANT_USER_ID]
-        if match:
-            ctx["participantId"] = match[0].get("id") or match[0].get("participantId")
+    print(f"\n  → {len(body)} participant(s) enrolled.")
+    match = [p for p in body if p.get("userId") == PARTICIPANT_USER_ID]
+    if match:
+        ctx["participantId"] = match[0]["participantId"]
+    if not ctx.get("participantId"):
+        raise ValueError("Could not resolve participantId for the configured user.")
     return ctx
 
 
 def step_3_add_assessor(ctx: dict) -> dict:
-    body = _step(
-        3, "Add assessor to flow", "POST",
-        f"/flows/{FLOW_ID}/assessors",
-        json={"userId": ASSESSOR_USER_ID},
-    )
-    ctx["assessorId"] = body.get("id") or body.get("assessorId")
+    # Re-adding an existing assessor returns 400; tolerate it and resolve in step 4.
+    try:
+        body = _step(
+            3, "Add assessor to flow", "POST",
+            f"/flows/{FLOW_ID}/assessors",
+            json={"userId": ASSESSOR_USER_ID},
+        )
+        ctx["assessorId"] = body.get("assessorId")
+    except requests.HTTPError:
+        print("  ⚠  Assessor likely already on the flow — will resolve from the list.")
     return ctx
 
 
 def step_4_list_assessors(ctx: dict) -> dict:
     body = _step(4, "List assessors on flow", "GET", f"/flows/{FLOW_ID}/assessors")
-    assessors = body if isinstance(body, list) else body.get("assessors", [])
-    print(f"\n  → {len(assessors)} assessor(s) added.")
-    if not ctx.get("assessorId") and assessors:
-        match = [a for a in assessors if a.get("userId") == ASSESSOR_USER_ID]
-        if match:
-            ctx["assessorId"] = match[0].get("id") or match[0].get("assessorId")
+    print(f"\n  → {len(body)} assessor(s) on flow.")
+    match = [a for a in body if a.get("user", {}).get("userId") == ASSESSOR_USER_ID]
+    if match:
+        ctx["assessorId"] = match[0]["assessorId"]
+    if not ctx.get("assessorId"):
+        raise ValueError("Could not resolve assessorId for the configured user.")
     return ctx
 
 
-def step_5_create_assessor_group(ctx: dict) -> dict:
-    body = _step(
-        5, "Create assessor group", "POST",
-        f"/flows/{FLOW_ID}/assessor-groups",
-        json={"name": "Integration Demo — Examiner Group"},
-    )
-    ctx["assessorGroupId"] = body.get("id") or body.get("assessorGroupId")
-    return ctx
-
-
-def step_6_allocate(ctx: dict) -> dict:
-    assessor_id = ctx.get("assessorId")
-    participant_id = ctx.get("participantId")
-    if not assessor_id or not participant_id:
-        print("  ⚠  Missing assessorId or participantId — skipping allocation step.")
-        return ctx
+def step_5_allocate(ctx: dict) -> dict:
     _step(
-        6, "Allocate assessor to participant", "POST",
-        f"/flows/{FLOW_ID}/assessors/{assessor_id}/allocations/participants/{participant_id}",
-        json={},
+        5, "Allocate assessor to participant", "POST",
+        f"/flows/{FLOW_ID}/assessors/{ctx['assessorId']}/allocations/participants/{ctx['participantId']}",
     )
     return ctx
 
 
-def step_7_verify_allocations(ctx: dict) -> dict:
-    assessor_id = ctx.get("assessorId")
-    if not assessor_id:
-        print("  ⚠  No assessorId — skipping allocation verification.")
-        return ctx
+def step_6_verify_allocations(ctx: dict) -> dict:
     body = _step(
-        7, "Verify assessor allocations", "GET",
-        f"/flows/{FLOW_ID}/assessors/{assessor_id}/allocations",
+        6, "Verify assessor allocations", "GET",
+        f"/flows/{FLOW_ID}/assessors/{ctx['assessorId']}/allocations",
     )
-    allocs = body if isinstance(body, list) else body.get("allocations", [])
+    allocs = body.get("participantIds", []) if isinstance(body, dict) else []
     print(f"\n  → Assessor is allocated to {len(allocs)} participant(s).")
     return ctx
 
@@ -185,9 +182,17 @@ def run_workflow() -> None:
     print(f"  Flow: {FLOW_ID}")
     print("=" * 62)
 
-    if "REPLACE_WITH" in FLOW_ID:
-        print("\n✗  WISEFLOW_FLOW_ID is not configured.\n"
-              "   Add it to your .env file (see README).")
+    unset = [
+        name for name, val in (
+            ("WISEFLOW_FLOW_ID", FLOW_ID),
+            ("WISEFLOW_PARTICIPANT_USER_ID", PARTICIPANT_USER_ID),
+            ("WISEFLOW_ASSESSOR_USER_ID", ASSESSOR_USER_ID),
+        )
+        if isinstance(val, str) and "REPLACE_WITH" in val
+    ]
+    if unset:
+        print(f"\n✗  Not configured: {', '.join(unset)}.\n"
+              "   Add them to your .env file (see README).")
         sys.exit(1)
 
     ctx: dict = {}
@@ -196,9 +201,8 @@ def run_workflow() -> None:
         step_2_list_participants,
         step_3_add_assessor,
         step_4_list_assessors,
-        step_5_create_assessor_group,
-        step_6_allocate,
-        step_7_verify_allocations,
+        step_5_allocate,
+        step_6_verify_allocations,
     ]
 
     try:

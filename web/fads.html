@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/wiseflow-mark.svg" />
   <link rel="stylesheet" href="tokens.css" />
   <link rel="stylesheet" href="styles.css?v=4" />
-  <link rel="stylesheet" href="fads.css?v=5" />
+  <link rel="stylesheet" href="fads.css?v=8" />
 </head>
 <body>
 
@@ -101,6 +101,8 @@
       <button class="tab-btn"        data-tab="exams"       role="tab" aria-selected="false">Exams</button>
       <button class="tab-btn"        data-tab="enrolments"  role="tab" aria-selected="false">Enrolments</button>
       <button class="tab-btn"        data-tab="api-console" role="tab" aria-selected="false">API Console</button>
+      <button class="tab-btn"        data-tab="simulation"  role="tab" aria-selected="false">Simulation</button>
+      <button class="tab-btn"        data-tab="dataflow"    role="tab" aria-selected="false">Data Flow</button>
     </div>
 
     <!-- ── Students panel ──────────────────────────────────────────────── -->
@@ -447,7 +449,7 @@
                   <span class="api-block-label">Step B — Response</span>
                   <button class="btn-copy" onclick="copyCode('api-w3-marks-response')">Copy</button>
                 </div>
-                <pre id="api-w3-marks-response" class="api-code"><span class="jc">// Grade details for one participant</span></pre>
+                <pre id="api-w3-marks-response" class="api-code"><span class="jc">// Per-item marks for one participant</span></pre>
               </div>
             </div>
           </div>
@@ -464,8 +466,81 @@
       </div>
     </div>
 
+    <!-- ── Simulation panel ──────────────────────────────────────────────── -->
+    <div id="tab-simulation" class="tab-panel" role="tabpanel">
+      <div class="sim-wrap">
+
+        <div class="sim-intro">
+          <h2>End-to-end simulation</h2>
+          <p>Follow one student's exam down the whole integration string — provisioned in FADS,
+             pushed into WISEflow, then returned as a <strong>webhook</strong> that lands the final
+             grade back in FADS. The last two stages are <em>push</em> events WISEflow sends to you;
+             no polling required.</p>
+          <div class="sim-controls">
+            <button id="sim-run" class="btn-primary" onclick="runSimulation()">&#9658; Run simulation</button>
+            <button id="sim-reset" class="btn-secondary" onclick="resetSimulation()">&#8635; Reset</button>
+            <label class="sim-speed-label">Speed
+              <select id="sim-speed" class="search-input">
+                <option value="0.5">0.5&times;</option>
+                <option value="1" selected>1&times;</option>
+                <option value="2">2&times;</option>
+              </select>
+            </label>
+            <span class="sim-legend">
+              <span class="sim-legend-item"><span class="sim-dot sim-dot-req"></span>SIS &rarr; WISEflow (request)</span>
+              <span class="sim-legend-item"><span class="sim-dot sim-dot-hook"></span>WISEflow &rarr; SIS (webhook)</span>
+            </span>
+          </div>
+        </div>
+
+        <div id="sim-track" class="sim-track" aria-label="Integration lifecycle"></div>
+
+        <div class="sim-lower">
+          <div id="sim-detail" class="sim-detail">
+            <div class="sim-detail-empty">Press <strong>Run simulation</strong> to send data down the line.</div>
+          </div>
+          <div id="sim-record" class="sim-record"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="tab-dataflow" class="tab-panel" role="tabpanel">
+      <div class="df-wrap">
+
+        <div class="sim-intro">
+          <h2>Data flow model</h2>
+          <p>A full sequence model between <strong>FADS (SIS)</strong> and <strong>WISEflow</strong>.
+             Each stage shows the endpoint, the payload posted and returned, and a moving
+             <em>user / flow / file / grade</em> token travelling the wire. The checklist on the
+             right tracks what data each step updates — and what runs next.</p>
+          <div class="sim-controls">
+            <button id="df-run" class="btn-primary" onclick="runDataflow()">&#9658; Run walkthrough</button>
+            <button id="df-reset" class="btn-secondary" onclick="resetDataflow()">&#8635; Reset</button>
+            <label class="sim-speed-label">Speed
+              <select id="df-speed" class="search-input">
+                <option value="0.5">0.5&times;</option>
+                <option value="1" selected>1&times;</option>
+                <option value="2">2&times;</option>
+              </select>
+            </label>
+            <span class="sim-legend">
+              <span class="sim-legend-item"><span class="sim-dot sim-dot-req"></span>SIS &rarr; WISEflow (request)</span>
+              <span class="sim-legend-item"><span class="sim-dot sim-dot-hook"></span>WISEflow &rarr; SIS (webhook)</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="df-main">
+          <div id="df-diagram" class="df-diagram" aria-label="Data flow sequence"></div>
+          <aside id="df-checklist" class="df-checklist"></aside>
+        </div>
+
+      </div>
+    </div>
+
   </main>
 
-  <script src="fads.js?v=4"></script>
+  <script src="fads.js?v=9"></script>
 </body>
 </html>

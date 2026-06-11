@@ -91,6 +91,11 @@ function wfFlowId() { return 'flw-' + randomHex(8); }
 function wfParticipantId() { return 'par-' + randomHex(8); }
 function wfSubmissionId() { return 'sub-' + randomHex(8); }
 
+// POST /license/create/flow takes an integer flow-type id, not a name.
+const FLOW_TYPE_IDS = { FLOWlock: 1, FLOWmulti: 2, FLOWassign: 3, FLOWhandin: 4 };
+// WISEflow date fields use unixtime (seconds).
+function toUnix(iso) { return Math.floor(new Date(iso).getTime() / 1000); }
+
 function randomDate(start, end) {
   const d = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
   return d.toISOString().split('T')[0];
@@ -362,6 +367,8 @@ const state = {
   examsSearch: '',
   enrolmentsExamFilter: '',
   apiLog: [],
+  sim: { running: false, token: 0, stages: [], sample: null },
+  df:  { running: false, token: 0, stages: [], sample: null },
 };
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
@@ -458,6 +465,8 @@ function switchTab(tab) {
   if (tab === 'exams')       renderExamsTab();
   if (tab === 'enrolments')  renderEnrolmentsTab();
   if (tab === 'api-console') renderApiConsole();
+  if (tab === 'simulation')  renderSimulation();
+  if (tab === 'dataflow')    renderDataflow();
 }
 
 // ── Drawer ─────────────────────────────────────────────────────────────────
@@ -575,7 +584,7 @@ async function provisionStudent(id) {
     s.wf_provisioned_at = isoNow();
     await dbPut('students', s);
     // Real WISEflow: POST /license/user → { userId }
-    const req = { email: s.email, firstname: s.first_name, lastname: s.last_name, roleId: 2 };
+    const req = { emails: [s.email], firstName: s.first_name, lastName: s.last_name, roles: [2] };
     const res = { userId: s.wf_id };
     logApiCall('POST', '/license/user', 201, req, res);
     toast(`${s.first_name} ${s.last_name} provisioned to WISEflow`, 'success');
@@ -761,15 +770,18 @@ async function provisionExam(id) {
     e.wf_provisioned    = true;
     e.wf_provisioned_at = isoNow();
     await dbPut('exams', e);
-    // Real WISEflow: POST /license/create/flow → { id, title, status }
-    // followed by PATCH /flows/{id}/dates, PATCH /flows/{id}/activate
-    const req = { title: e.title, flowTypeId: 'ft_' + e.flow_type.toLowerCase().replace('flow', '') };
-    const res = { id: e.wf_flow_id, title: e.title, status: 'draft' };
-    logApiCall('POST', '/license/create/flow', 201, req, res);
+    // Real WISEflow: POST /license/create/flow → { flowId }
+    // followed by PATCH /flows/{id}/dates, PATCH /flows/{id}/activate (both return no data)
+    const staff = await dbGetAll('staff');
+    const managerId = staff[0]?.wf_id;
+    logApiCall('POST', '/license/create/flow', 201,
+      { title: e.title, type: FLOW_TYPE_IDS[e.flow_type] ?? 1, managers: [managerId] },
+      { flowId: e.wf_flow_id });
     logApiCall('PATCH', `/flows/${e.wf_flow_id}/dates`, 200,
-      { startDate: e.start_date, endDate: e.end_date },
-      { startDate: e.start_date, endDate: e.end_date });
-    logApiCall('PATCH', `/flows/${e.wf_flow_id}/activate`, 200, {}, { id: e.wf_flow_id, status: 'active' });
+      { participation: { start: toUnix(e.start_date), end: toUnix(e.end_date) },
+        marking: { end: toUnix(e.end_date) + 14 * 86400 } },
+      null);
+    logApiCall('PATCH', `/flows/${e.wf_flow_id}/activate`, 200, null, null);
     toast(`Exam ${e.exam_code} provisioned (${e.wf_flow_id})`, 'success');
     await renderExamsTab();
     await updateStats();
@@ -882,10 +894,10 @@ async function syncEnrolment(id) {
     en.wf_provisioned     = true;
     en.wf_provisioned_at  = isoNow();
     await dbPut('enrolments', en);
-    // Real WISEflow: POST /flows/{flowId}/participants with single { userId }
+    // Real WISEflow: POST /flows/{flowId}/participants with an array of { userId }
     logApiCall('POST', `/flows/${exam.wf_flow_id}/participants`, 201,
-      { userId: stu.wf_id },
-      { id: participantId, userId: stu.wf_id, flowId: exam.wf_flow_id });
+      [{ userId: stu.wf_id }],
+      [{ participant: { id: participantId }, user: { id: stu.wf_id, firstName: stu.first_name, lastName: stu.last_name, emails: [stu.email] } }]);
     toast(`Enrolment synced (${participantId})`, 'success');
     await renderEnrolmentsTab();
   } catch (err) { toast(`Error: ${err.message}`, 'error'); }
@@ -933,10 +945,12 @@ function passbackGrade(id) {
         en.grade_passback_at = isoNow();
         if (!en.submission_id) en.submission_id = wfSubmissionId();
         await dbPut('enrolments', en);
-        logApiCall('PATCH', `/v1/flows/${exam.wf_flow_id||'unprovisioned'}/participants/${en.wf_participant_id||'par-unsynced'}`, 200,
-          { grade, passed },
-          { participantId: en.wf_participant_id||'par-unsynced', grade, passed, updatedAt: en.grade_passback_at });
-        toast(`Grade "${grade}" recorded`, 'success');
+        // WISEflow has no grade-push endpoint — grades are pulled. Log the GET the SIS uses to read marks.
+        const staff = await dbGetAll('staff');
+        logApiCall('GET', `/flows/${exam.wf_flow_id||'unprovisioned'}/participants/${en.wf_participant_id||'par-unsynced'}/item-based-marks`, 200,
+          null,
+          buildItemMarks(staff[0]?.wf_id));
+        toast(`Grade "${grade}" recorded in FADS`, 'success');
         await renderEnrolmentsTab();
       });
   });
@@ -1093,7 +1107,8 @@ async function loadWfpFlow() {
   const examId = document.getElementById('api-wfp-exam')?.value;
   if (!examId) return;
   const exam = await dbGet('exams', examId);
-  const flowTypeId = 'ft_' + exam.flow_type.toLowerCase().replace('flow', '');
+  const staff = await dbGetAll('staff');
+  const managerId = staff[0]?.wf_id;
   const flowId = exam.wf_flow_id || ('flw-' + randomHex(8));
 
   document.getElementById('api-wfp-info').textContent =
@@ -1101,18 +1116,19 @@ async function loadWfpFlow() {
 
   // Step 1: Create flow
   document.getElementById('api-wfp-create-url').textContent = 'POST /license/create/flow';
-  setCode('api-wfp-create-request', { title: exam.title, flowTypeId, language: exam.language ?? 'da' });
-  setCode('api-wfp-create-response', { id: flowId, title: exam.title, status: 'draft' });
+  setCode('api-wfp-create-request', { title: exam.title, type: FLOW_TYPE_IDS[exam.flow_type] ?? 1, managers: [managerId] });
+  setCode('api-wfp-create-response', { flowId });
 
-  // Step 2: Set dates
+  // Step 2: Set dates (unixtime; returns no data)
   document.getElementById('api-wfp-dates-url').textContent = `PATCH /flows/${flowId}/dates`;
-  setCode('api-wfp-dates-request', { startDate: exam.start_date, endDate: exam.end_date });
-  setCode('api-wfp-dates-response', { id: flowId, startDate: exam.start_date, endDate: exam.end_date });
+  setCode('api-wfp-dates-request', { participation: { start: toUnix(exam.start_date), end: toUnix(exam.end_date) },
+    marking: { end: toUnix(exam.end_date) + 14 * 86400 } });
+  setCode('api-wfp-dates-response', null);
 
-  // Step 3: Activate
+  // Step 3: Activate (empty body; returns no data)
   document.getElementById('api-wfp-activate-url').textContent = `PATCH /flows/${flowId}/activate`;
   setCode('api-wfp-activate-request', null);
-  setCode('api-wfp-activate-response', { id: flowId, title: exam.title, status: 'active' });
+  setCode('api-wfp-activate-response', null);
 }
 
 async function sendWfp() {
@@ -1121,22 +1137,23 @@ async function sendWfp() {
   const exam = await dbGet('exams', examId);
   if (exam.wf_provisioned) { toast('Exam already provisioned', 'warn'); return; }
 
-  const flowTypeId = 'ft_' + exam.flow_type.toLowerCase().replace('flow', '');
+  const staff = await dbGetAll('staff');
+  const managerId = staff[0]?.wf_id;
   exam.wf_flow_id        = wfFlowId();
   exam.wf_provisioned    = true;
   exam.wf_provisioned_at = isoNow();
   await dbPut('exams', exam);
 
   logApiCall('POST', '/license/create/flow', 201,
-    { title: exam.title, flowTypeId, language: exam.language ?? 'da' },
-    { id: exam.wf_flow_id, title: exam.title, status: 'draft' });
+    { title: exam.title, type: FLOW_TYPE_IDS[exam.flow_type] ?? 1, managers: [managerId] },
+    { flowId: exam.wf_flow_id });
   logApiCall('PATCH', `/flows/${exam.wf_flow_id}/dates`, 200,
-    { startDate: exam.start_date, endDate: exam.end_date },
-    { id: exam.wf_flow_id, startDate: exam.start_date, endDate: exam.end_date });
-  logApiCall('PATCH', `/flows/${exam.wf_flow_id}/activate`, 200, null,
-    { id: exam.wf_flow_id, title: exam.title, status: 'active' });
+    { participation: { start: toUnix(exam.start_date), end: toUnix(exam.end_date) },
+      marking: { end: toUnix(exam.end_date) + 14 * 86400 } },
+    null);
+  logApiCall('PATCH', `/flows/${exam.wf_flow_id}/activate`, 200, null, null);
 
-  setCode('api-wfp-activate-response', { id: exam.wf_flow_id, title: exam.title, status: 'active' });
+  setCode('api-wfp-activate-response', null);
   toast(`"${exam.title}" provisioned in WISEflow`, 'success');
   await renderApiConsole();
   await updateStats();
@@ -1150,12 +1167,12 @@ function buildW1Preview() {
     document.getElementById('api-w1-url').textContent = 'POST /license/user';
     return;
   }
-  // Real WISEflow: one POST /license/user call per user, body = { email, firstname, lastname, roleId }
+  // Real WISEflow: one POST /license/user call per user, body = { emails, firstName, lastName, roles }
   const stus = state.students.filter(s => ids.includes(s.id));
   const first = stus[0];
   document.getElementById('api-w1-url').textContent =
     `POST /license/user  ${stus.length > 1 ? `(×${stus.length} calls, showing first)` : ''}`;
-  setCode('api-w1-request', { email: first.email, firstname: first.first_name, lastname: first.last_name, roleId: 2 });
+  setCode('api-w1-request', { emails: [first.email], firstName: first.first_name, lastName: first.last_name, roles: [2] });
   // Show preview response immediately (real shape: { userId })
   setCode('api-w1-response', { userId: first.wf_id });
 }
@@ -1168,7 +1185,7 @@ async function sendW1() {
   for (const s of stus) { s.wf_provisioned = true; s.wf_provisioned_at = isoNow(); await dbPut('students', s); }
   const last = stus[stus.length - 1];
   logApiCall('POST', '/license/user', 201,
-    { email: last.email, firstname: last.first_name, lastname: last.last_name, roleId: 2 },
+    { emails: [last.email], firstName: last.first_name, lastName: last.last_name, roles: [2] },
     { userId: last.wf_id });
   setCode('api-w1-response', stus.length === 1
     ? { userId: stus[0].wf_id }
@@ -1185,16 +1202,16 @@ async function loadW2Participants() {
   const ens  = await dbGetByIndex('enrolments', 'exam_id', examId);
   const unsynced = ens.filter(en => !en.wf_provisioned && en.enrolment_status === 'enrolled');
   const stuMap = Object.fromEntries(state.students.map(s => [s.id, s]));
-  // Real WISEflow: one POST /flows/{flowId}/participants per student, body = { userId }
+  // Real WISEflow: POST /flows/{flowId}/participants with an array of { userId }
   const first = unsynced[0];
   const firstStu = first ? stuMap[first.student_id] : null;
   document.getElementById('api-w2-url').textContent = `POST /flows/${exam.wf_flow_id}/participants`;
-  document.getElementById('api-w2-info').textContent = `${unsynced.length} unsynced enrolment${unsynced.length!==1?'s':''}${unsynced.length > 1 ? ' — showing first call' : ''}`;
-  setCode('api-w2-request', firstStu ? { userId: firstStu.wf_id } : '// No unsynced enrolments');
-  // Preview response immediately with real WISEflow shape
+  document.getElementById('api-w2-info').textContent = `${unsynced.length} unsynced enrolment${unsynced.length!==1?'s':''}`;
+  setCode('api-w2-request', firstStu ? [{ userId: firstStu.wf_id }] : '// No unsynced enrolments');
+  // Preview response immediately with real WISEflow shape (unwrapped data array)
   setCode('api-w2-response', firstStu
-    ? { id: 'par-' + randomHex(8), userId: firstStu.wf_id, flowId: exam.wf_flow_id }
-    : { message: 'All enrolments already synced' });
+    ? [{ participant: { id: 'par-' + randomHex(8) }, user: { id: firstStu.wf_id, firstName: firstStu.first_name, lastName: firstStu.last_name, emails: [firstStu.email] } }]
+    : '// All enrolments already synced');
 }
 
 async function sendW2() {
@@ -1204,55 +1221,71 @@ async function sendW2() {
   const ens    = await dbGetByIndex('enrolments', 'exam_id', examId);
   const unsynced = ens.filter(en => !en.wf_provisioned && en.enrolment_status === 'enrolled');
   const stuMap = Object.fromEntries(state.students.map(s => [s.id, s]));
-  const resBody = [];
+  // Real WISEflow accepts an array of users in one POST and returns a matching data array.
+  const resData = [];
   for (const en of unsynced) {
     en.wf_participant_id = wfParticipantId();
     en.wf_provisioned    = true;
     en.wf_provisioned_at = isoNow();
     await dbPut('enrolments', en);
-    resBody.push({ id: en.wf_participant_id, userId: stuMap[en.student_id]?.wf_id, flowId: exam.wf_flow_id });
+    const stu = stuMap[en.student_id];
+    resData.push({ participant: { id: en.wf_participant_id }, user: { id: stu?.wf_id, firstName: stu?.first_name, lastName: stu?.last_name, emails: stu ? [stu.email] : [] } });
   }
-  // Log last call as representative example
-  if (resBody.length) {
-    const last = unsynced[unsynced.length - 1];
+  if (resData.length) {
     logApiCall('POST', `/flows/${exam.wf_flow_id}/participants`, 201,
-      { userId: stuMap[last.student_id]?.wf_id }, resBody[resBody.length - 1]);
+      unsynced.map(en => ({ userId: stuMap[en.student_id]?.wf_id })), resData);
   }
-  setCode('api-w2-response', resBody.length === 1 ? resBody[0] : resBody);
+  setCode('api-w2-response', resData.length ? resData : '// All enrolments already synced');
   toast(`${unsynced.length} participants synced`, 'success');
   await renderApiConsole();
+}
+
+// Real item-based-marks returns an array of per-item scores; the SIS aggregates them.
+function buildItemMarks(assessorId) {
+  const n = rand(3, 5);
+  return Array.from({ length: n }, (_, i) => ({
+    isAutoScored: false,
+    deactivated: false,
+    itemNumber: i + 1,
+    assessorId,
+    reference: `item-${i + 1}`,
+    score: rand(0, 10),
+    state: 'SCORED',
+  }));
+}
+
+function buildSubmission(en) {
+  return {
+    id: en.submission_id,
+    status: { handedIn: true, handedInBlank: false, handedInDate: en.grade_passback_at || isoNow(), handedInIp: null },
+    similarityReports: [],
+  };
 }
 
 // W3: SIS pulls grades FROM WISEflow using GET /submissions + GET /item-based-marks
 async function loadW3Grades() {
   const examId = document.getElementById('api-w3-exam').value;
   if (!examId) return;
-  const exam = await dbGet('exams', examId);
-  const ens  = await dbGetByIndex('enrolments', 'exam_id', examId);
+  const exam  = await dbGet('exams', examId);
+  const ens   = await dbGetByIndex('enrolments', 'exam_id', examId);
+  const staff = await dbGetAll('staff');
+  const assessorId = staff[0]?.wf_id;
 
-  // Step A: GET /submissions
-  const submissions = ens
-    .filter(en => en.submission_id)
-    .map(en => ({ id: en.submission_id, participantId: en.wf_participant_id || 'par-unsynced', status: en.grade ? 'marked' : 'submitted' }));
+  // Step A: GET /submissions — returns an array of { id, status:{handedIn,…}, similarityReports }
+  const submissions = ens.filter(en => en.submission_id).map(buildSubmission);
 
   document.getElementById('api-w3-url').textContent = `GET /flows/${exam.wf_flow_id}/submissions`;
   document.getElementById('api-w3-info').textContent =
     `${submissions.length} submission${submissions.length!==1?'s':''}, ${ens.filter(e=>e.grade).length} graded`;
   setCode('api-w3-request', null); // GET — no body
-  setCode('api-w3-response', { submissions, total: submissions.length });
+  setCode('api-w3-response', submissions);
 
-  // Step B: GET /item-based-marks for first graded participant
+  // Step B: GET /item-based-marks for first graded participant — array of per-item scores
   const first = ens.find(en => en.grade && en.wf_participant_id);
   if (first) {
     document.getElementById('api-w3-marks-url').textContent =
       `GET /flows/${exam.wf_flow_id}/participants/${first.wf_participant_id}/item-based-marks`;
-    setCode('api-w3-marks-response', {
-      participantId: first.wf_participant_id,
-      grade: first.grade,
-      passed: first.grade_passed,
-      submissionId: first.submission_id,
-      passedAt: first.grade_passback_at || isoNow(),
-    });
+    setCode('api-w3-marks-response', buildItemMarks(assessorId));
   } else {
     document.getElementById('api-w3-marks-url').textContent = 'GET /flows/{flowId}/participants/{participantId}/item-based-marks';
     setCode('api-w3-marks-response', '// No graded participants yet — use the Grade button in Enrolments tab');
@@ -1262,33 +1295,27 @@ async function loadW3Grades() {
 async function sendW3() {
   const examId = document.getElementById('api-w3-exam').value;
   if (!examId) { toast('Select an exam', 'error'); return; }
-  const exam = await dbGet('exams', examId);
-  const ens  = await dbGetByIndex('enrolments', 'exam_id', examId);
+  const exam  = await dbGet('exams', examId);
+  const ens   = await dbGetByIndex('enrolments', 'exam_id', examId);
+  const staff = await dbGetAll('staff');
+  const assessorId = staff[0]?.wf_id;
   const graded = ens.filter(en => en.grade && en.wf_participant_id);
 
-  // Simulate SIS polling WISEflow for grades
-  const submissions = graded.map(en => ({
-    id: en.submission_id, participantId: en.wf_participant_id, status: 'marked',
-  }));
-  logApiCall('GET', `/flows/${exam.wf_flow_id}/submissions`, 200, null,
-    { submissions, total: submissions.length });
+  // Simulate SIS polling WISEflow: GET submissions, then per-participant item-based marks
+  const submissions = graded.map(buildSubmission);
+  logApiCall('GET', `/flows/${exam.wf_flow_id}/submissions`, 200, null, submissions);
 
   if (graded.length) {
     const en = graded[0];
-    logApiCall('GET', `/flows/${exam.wf_flow_id}/participants/${en.wf_participant_id}/item-based-marks`, 200, null, {
-      participantId: en.wf_participant_id,
-      grade: en.grade,
-      passed: en.grade_passed,
-      submissionId: en.submission_id,
-      passedAt: en.grade_passback_at || isoNow(),
-    });
+    logApiCall('GET', `/flows/${exam.wf_flow_id}/participants/${en.wf_participant_id}/item-based-marks`, 200, null,
+      buildItemMarks(assessorId));
     // Mark as pulled
     for (const e of graded) {
       if (!e.grade_passback_at) { e.grade_passback_at = isoNow(); await dbPut('enrolments', e); }
     }
   }
 
-  setCode('api-w3-response', { submissions, total: submissions.length });
+  setCode('api-w3-response', submissions);
   toast(`Pulled ${graded.length} grade${graded.length!==1?'s':''} from WISEflow`, 'success');
   await renderApiConsole();
 }
@@ -1309,6 +1336,370 @@ function copyCode(id) {
   navigator.clipboard.writeText(el.textContent)
     .then(() => toast('Copied to clipboard', 'success'))
     .catch(() => toast('Copy failed', 'error'));
+}
+
+// ── Simulation ───────────────────────────────────────────────────────────
+
+function simGrade(scale) {
+  if (scale === '7-point') return { grade: pick(['12', '10', '7', '4', '02']), passed: true };
+  if (scale === 'ECTS')    return { grade: pick(['A', 'B', 'C', 'D', 'E']),    passed: true };
+  return { grade: 'Pass', passed: true };
+}
+
+function buildSimSample() {
+  const student = state.students[0];
+  const exam = state.exams.find(e => e.wf_flow_id) || state.exams[0];
+  if (!student || !exam) return null;
+  const g = simGrade(exam.grade_scale);
+  return {
+    student, exam,
+    userId: student.wf_id,
+    flowId: exam.wf_flow_id || wfFlowId(),
+    participantId: wfParticipantId(),
+    submissionId: wfSubmissionId(),
+    webhookId: rand(1000, 9999),
+    grade: g.grade,
+    passed: g.passed,
+    hookUrl: 'https://fads.wfuni.edu/hooks/wiseflow',
+  };
+}
+
+function buildSimStages(s) {
+  const now = isoNow();
+  return [
+    {
+      title: 'Provision user', sub: 'POST /license/user', system: 'SIS', kind: 'req', dir: 'SIS → WISEflow',
+      method: 'POST', url: '/license/user', status: 201,
+      request: { emails: [s.student.email], firstName: s.student.first_name, lastName: s.student.last_name, roles: [2] },
+      response: { userId: s.userId },
+      note: 'FADS creates the student on the WISEflow licence.',
+      entity: 'user', updateLabel: `User provisioned · ${s.userId}`,
+    },
+    {
+      title: 'Provision flow', sub: 'POST /license/create/flow', system: 'SIS', kind: 'req', dir: 'SIS → WISEflow',
+      method: 'POST', url: '/license/create/flow', status: 201,
+      request: { title: s.exam.title, type: FLOW_TYPE_IDS[s.exam.flow_type] ?? 1, managers: [s.userId] },
+      response: { flowId: s.flowId, status: 'active' },
+      note: 'Create → set dates → activate, collapsed into one stage.',
+      entity: 'flow', updateLabel: `Flow created & activated · ${s.flowId}`,
+    },
+    {
+      title: 'Enrol participant', sub: 'POST /flows/{id}/participants', system: 'SIS', kind: 'req', dir: 'SIS → WISEflow',
+      method: 'POST', url: `/flows/${s.flowId}/participants`, status: 201,
+      request: [{ userId: s.userId }],
+      response: [{ participant: { id: s.participantId }, user: { id: s.userId, firstName: s.student.first_name, lastName: s.student.last_name, emails: [s.student.email] } }],
+      note: 'The student becomes a participant on the active flow.',
+      entity: 'user', updateLabel: `Participant enrolled · ${s.participantId}`,
+    },
+    {
+      title: 'Register webhook', sub: 'POST /webhooks', system: 'SIS', kind: 'req', dir: 'SIS → WISEflow',
+      method: 'POST', url: '/webhooks', status: 201,
+      request: { title: 'FADS grade sync', url: s.hookUrl, secret: '••••••', active: true, events: ['PAPER_SUBMITTED', 'FINAL_GRADE'] },
+      response: { id: s.webhookId, active: true, events: ['PAPER_SUBMITTED', 'FINAL_GRADE'] },
+      note: 'FADS subscribes once — WISEflow now pushes events instead of FADS polling.',
+      entity: 'hook', updateLabel: `Webhook registered · #${s.webhookId}`,
+    },
+    {
+      title: 'Paper submitted', sub: 'webhook PAPER_SUBMITTED', system: 'WISEflow', kind: 'hook', dir: 'WISEflow → SIS',
+      method: 'POST', url: s.hookUrl, status: 200, event: 'PAPER_SUBMITTED',
+      request: { event: 'PAPER_SUBMITTED', webhookId: s.webhookId, flowId: s.flowId, participantId: s.participantId, occurredAt: now, data: { submissionId: s.submissionId, handedIn: true } },
+      response: { received: true },
+      note: 'The student hands in. WISEflow POSTs the event to the FADS endpoint.',
+      entity: 'file', updateLabel: `Submission received · ${s.submissionId}`,
+    },
+    {
+      title: 'Final grade', sub: 'webhook FINAL_GRADE', system: 'WISEflow', kind: 'hook', dir: 'WISEflow → SIS',
+      method: 'POST', url: s.hookUrl, status: 200, event: 'FINAL_GRADE', updatesRecord: true,
+      request: { event: 'FINAL_GRADE', webhookId: s.webhookId, flowId: s.flowId, participantId: s.participantId, occurredAt: now, data: { grade: s.grade, passed: s.passed, scale: s.exam.grade_scale } },
+      response: { received: true },
+      note: 'Grade is final. FADS reads the payload and updates the student record — no GET required.',
+      entity: 'grade', updateLabel: `Grade stored in FADS · ${s.grade}`,
+    },
+  ];
+}
+
+async function renderSimulation() {
+  [state.students, state.exams] = await Promise.all([dbGetAll('students'), dbGetAll('exams')]);
+  const sample = buildSimSample();
+  state.sim.sample = sample;
+  state.sim.stages = sample ? buildSimStages(sample) : [];
+
+  const track = document.getElementById('sim-track');
+  if (!sample) {
+    track.innerHTML = '<div class="sim-detail-empty">No seeded data — reset the database first.</div>';
+    return;
+  }
+
+  const stages = state.sim.stages;
+  track.innerHTML = '<div class="sim-rail">' + stages.map((st, i) => {
+    const node = `
+      <div class="sim-node sim-node-${st.kind}" data-node="${i}">
+        <span class="sim-node-system sim-system-${st.system === 'SIS' ? 'sis' : 'wf'}">${st.system}</span>
+        <div class="sim-node-dot"><span>${i + 1}</span></div>
+        <div class="sim-node-title">${escHtml(st.title)}</div>
+        <div class="sim-node-sub">${escHtml(st.sub)}</div>
+      </div>`;
+    const conn = i < stages.length - 1
+      ? `<div class="sim-connector sim-connector-${stages[i + 1].kind}" data-conn="${i}"><span class="sim-packet"></span></div>`
+      : '';
+    return node + conn;
+  }).join('') + '</div>';
+
+  resetSimulation();
+}
+
+function renderSimRecord(graded) {
+  const s = state.sim.sample;
+  const el = document.getElementById('sim-record');
+  if (!s) { el.innerHTML = ''; return; }
+  const passLabel = ['Pass', 'Fail'].includes(s.grade) ? '' : ` · ${s.passed ? 'Pass' : 'Fail'}`;
+  const gradeCell = graded
+    ? `<span class="sim-grade is-updated">${escHtml(s.grade)}${passLabel}</span>`
+    : `<span class="sim-grade sim-grade-awaiting">Awaiting…</span>`;
+  el.innerHTML = `
+    <div class="sim-record-head">FADS student record</div>
+    <div class="sim-record-row"><label>Student</label><span>${escHtml(s.student.first_name)} ${escHtml(s.student.last_name)}</span></div>
+    <div class="sim-record-row"><label>WF user id</label><code class="id-code">${escHtml(s.userId)}</code></div>
+    <div class="sim-record-row"><label>Exam</label><span>${escHtml(s.exam.exam_code)} — ${escHtml(s.exam.title)}</span></div>
+    <div class="sim-record-row"><label>Grade scale</label><span>${escHtml(s.exam.grade_scale)}</span></div>
+    <div class="sim-record-row sim-record-grade"><label>Grade</label>${gradeCell}</div>`;
+}
+
+function renderSimDetail(i) {
+  const st = state.sim.stages[i];
+  const el = document.getElementById('sim-detail');
+  const methodCls = `method-${st.method.toLowerCase()}`;
+  const eventChip = st.event ? `<span class="sim-event-chip">${escHtml(st.event)}</span>` : '';
+  const reqLabel = st.kind === 'hook' ? 'Event payload' : 'Request';
+  el.innerHTML = `
+    <div class="sim-detail-head">
+      <span class="sim-dir-badge sim-dir-${st.kind}">${escHtml(st.dir)}</span>
+      <span class="method-badge ${methodCls}">${st.method}</span>
+      <span class="sim-detail-url">${escHtml(st.url)}</span>
+      <span class="status-badge status-2xx">${st.status}</span>
+      ${eventChip}
+    </div>
+    <p class="sim-detail-note">${escHtml(st.note)}</p>
+    <div class="sim-detail-blocks">
+      <div class="sim-detail-block">
+        <div class="sim-detail-label">${reqLabel}</div>
+        <pre class="api-code">${syntaxHighlight(st.request)}</pre>
+      </div>
+      <div class="sim-detail-block">
+        <div class="sim-detail-label">Response</div>
+        <pre class="api-code">${syntaxHighlight(st.response)}</pre>
+      </div>
+    </div>`;
+}
+
+function resetSimulation() {
+  state.sim.token++;            // cancels any in-flight run
+  state.sim.running = false;
+  const track = document.getElementById('sim-track');
+  if (track) {
+    track.classList.add('sim-no-anim');
+    track.querySelectorAll('.sim-node').forEach(n => n.classList.remove('is-active', 'is-done'));
+    track.querySelectorAll('.sim-connector').forEach(c => c.classList.remove('is-flowing'));
+    void track.offsetWidth;     // force reflow so packets snap back without animating
+    track.classList.remove('sim-no-anim');
+  }
+  const detail = document.getElementById('sim-detail');
+  if (detail) detail.innerHTML = '<div class="sim-detail-empty">Press <strong>Run simulation</strong> to send data down the line.</div>';
+  renderSimRecord(false);
+  const btn = document.getElementById('sim-run');
+  if (btn) btn.disabled = false;
+}
+
+const simWait = ms => new Promise(r => setTimeout(r, ms));
+
+async function runSimulation() {
+  if (state.sim.running || !state.sim.stages.length) return;
+  resetSimulation();
+  const myToken = ++state.sim.token;
+  state.sim.running = true;
+  document.getElementById('sim-run').disabled = true;
+
+  const speed = parseFloat(document.getElementById('sim-speed').value) || 1;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const flowDur = reduce ? 0 : Math.round(900 / speed);
+  const dwell   = reduce ? 250 : Math.round(850 / speed);
+
+  const track = document.getElementById('sim-track');
+  track.style.setProperty('--sim-flow', flowDur + 'ms');
+  const nodes = [...track.querySelectorAll('.sim-node')];
+  const conns = [...track.querySelectorAll('.sim-connector')];
+
+  for (let i = 0; i < state.sim.stages.length; i++) {
+    if (i > 0) {
+      conns[i - 1].classList.add('is-flowing');
+      await simWait(flowDur);
+      if (myToken !== state.sim.token) return;
+      nodes[i - 1].classList.remove('is-active');
+      nodes[i - 1].classList.add('is-done');
+    }
+    nodes[i].classList.add('is-active');
+    renderSimDetail(i);
+    if (state.sim.stages[i].updatesRecord) renderSimRecord(true);
+    await simWait(dwell);
+    if (myToken !== state.sim.token) return;
+  }
+
+  nodes[nodes.length - 1].classList.remove('is-active');
+  nodes[nodes.length - 1].classList.add('is-done');
+  state.sim.running = false;
+  document.getElementById('sim-run').disabled = false;
+  toast('Final grade delivered to FADS via webhook', 'success');
+}
+
+// ── Data Flow tab (sequence model) ───────────────────────────────────────────
+
+function dfIcon(entity) {
+  const paths = {
+    user: '<circle cx="12" cy="8" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>',
+    flow: '<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7.6 7.4 10.8 16M16.4 7.4 13.2 16M8 6h8"/>',
+    hook: '<path d="M9.5 14.5 7 17a3.2 3.2 0 0 1-4.5-4.5l3-3a3.2 3.2 0 0 1 4.5 0"/><path d="M14.5 9.5 17 7a3.2 3.2 0 0 1 4.5 4.5l-3 3a3.2 3.2 0 0 1-4.5 0"/>',
+    file: '<path d="M7 3.5h6l4 4V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M13 3.5V8h4"/>',
+    grade: '<circle cx="12" cy="9" r="5.2"/><path d="M9 13.5 7.5 21l4.5-2.6L16.5 21 15 13.5"/>',
+  };
+  return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[entity] || paths.file}</svg>`;
+}
+
+async function renderDataflow() {
+  [state.students, state.exams] = await Promise.all([dbGetAll('students'), dbGetAll('exams')]);
+  const sample = buildSimSample();
+  state.df.sample = sample;
+  state.df.stages = sample ? buildSimStages(sample) : [];
+
+  const diagram = document.getElementById('df-diagram');
+  if (!sample) {
+    diagram.innerHTML = '<div class="sim-detail-empty">No seeded data — reset the database first.</div>';
+    document.getElementById('df-checklist').innerHTML = '';
+    return;
+  }
+
+  diagram.innerHTML = `
+    <div class="df-lifelines">
+      <span class="df-life df-life-sis">FADS<small>SIS</small></span>
+      <span class="df-life df-life-wf">WISEflow</span>
+    </div>
+    <div class="df-spine df-spine-left"></div>
+    <div class="df-spine df-spine-right"></div>
+    <div class="df-stages">
+      ${state.df.stages.map((st, i) => dfStageRow(st, i)).join('')}
+    </div>`;
+
+  resetDataflow();
+}
+
+function dfStageRow(st, i) {
+  const methodCls = `method-${st.method.toLowerCase()}`;
+  const rev = st.kind === 'hook';              // webhook travels WISEflow → SIS (right → left)
+  const eventChip = st.event ? `<span class="sim-event-chip">${escHtml(st.event)}</span>` : '';
+  return `
+    <div class="df-stage df-stage-${st.kind}" data-stage="${i}">
+      <div class="df-stage-head">
+        <span class="df-num">${i + 1}</span>
+        <span class="df-stage-title">${escHtml(st.title)}</span>
+        <span class="method-badge ${methodCls}">${st.method}</span>
+        <code class="df-endpoint">${escHtml(st.url)}</code>
+        <span class="status-badge status-2xx">${st.status}</span>
+        ${eventChip}
+      </div>
+      <div class="df-wire ${rev ? 'df-wire-rev' : ''}">
+        <span class="df-dir-label">${escHtml(st.dir)}</span>
+        <span class="df-token df-token-${st.kind}" data-entity="${st.entity}">${dfIcon(st.entity)}</span>
+      </div>
+      <div class="df-payloads">
+        <div class="df-payload">
+          <div class="df-payload-label">${st.kind === 'hook' ? 'Event payload' : 'Posted'}</div>
+          <pre class="api-code">${syntaxHighlight(st.request)}</pre>
+        </div>
+        <div class="df-payload">
+          <div class="df-payload-label">Returned</div>
+          <pre class="api-code">${syntaxHighlight(st.response)}</pre>
+        </div>
+      </div>
+      <p class="df-stage-note">${escHtml(st.note)}</p>
+    </div>`;
+}
+
+function renderDfChecklist(doneCount, nextIdx) {
+  const el = document.getElementById('df-checklist');
+  if (!el) return;
+  const stages = state.df.stages;
+  const items = stages.map((st, i) => {
+    const done = i < doneCount;
+    const isNext = i === nextIdx;
+    const stateCls = done ? 'is-done' : (isNext ? 'is-next' : '');
+    const box = done ? '&#10003;' : (i + 1);
+    const detail = done
+      ? `<div class="df-check-update">${escHtml(st.updateLabel)}</div>`
+      : (isNext ? '<div class="df-check-next">Next &rarr;</div>' : '');
+    return `
+      <div class="df-check ${stateCls}">
+        <span class="df-check-box">${box}</span>
+        <div class="df-check-body">
+          <div class="df-check-title">${escHtml(st.title)}</div>
+          ${detail}
+        </div>
+      </div>`;
+  }).join('');
+  const done = doneCount >= stages.length;
+  const summary = done
+    ? '<div class="df-check-summary is-complete">All stages complete — grade landed in FADS via webhook.</div>'
+    : `<div class="df-check-summary">${doneCount} of ${stages.length} stages complete.</div>`;
+  el.innerHTML = `<div class="df-check-head">Run checklist</div>${items}${summary}`;
+}
+
+function resetDataflow() {
+  state.df.token++;
+  state.df.running = false;
+  const diagram = document.getElementById('df-diagram');
+  if (diagram) {
+    diagram.classList.add('df-no-anim');
+    diagram.querySelectorAll('.df-stage').forEach(s => s.classList.remove('is-active', 'is-done'));
+    void diagram.offsetWidth;
+    diagram.classList.remove('df-no-anim');
+  }
+  renderDfChecklist(0, 0);
+  const btn = document.getElementById('df-run');
+  if (btn) btn.disabled = false;
+}
+
+async function runDataflow() {
+  if (state.df.running || !state.df.stages.length) return;
+  resetDataflow();
+  const myToken = ++state.df.token;
+  state.df.running = true;
+  document.getElementById('df-run').disabled = true;
+
+  const speed = parseFloat(document.getElementById('df-speed').value) || 1;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const flowDur = reduce ? 0 : Math.round(1000 / speed);
+  const dwell   = reduce ? 250 : Math.round(700 / speed);
+
+  const diagram = document.getElementById('df-diagram');
+  diagram.style.setProperty('--df-flow', flowDur + 'ms');
+  const rows = [...diagram.querySelectorAll('.df-stage')];
+
+  for (let i = 0; i < state.df.stages.length; i++) {
+    if (myToken !== state.df.token) return;
+    renderDfChecklist(i, i);
+    const row = rows[i];
+    row.classList.add('is-active');
+    row.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'nearest' });
+    await simWait(flowDur);
+    if (myToken !== state.df.token) return;
+    row.classList.remove('is-active');
+    row.classList.add('is-done');
+    renderDfChecklist(i + 1, i + 1);
+    await simWait(dwell);
+    if (myToken !== state.df.token) return;
+  }
+
+  state.df.running = false;
+  document.getElementById('df-run').disabled = false;
+  toast('Walkthrough complete — grade stored in FADS', 'success');
 }
 
 // ── Reset ──────────────────────────────────────────────────────────────────

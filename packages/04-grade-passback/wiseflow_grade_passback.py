@@ -4,12 +4,19 @@ WISEflow Integration Package 04 — Grade Passback
 Demonstrates fetching assessment results from WISEflow and pushing them to an
 external Student Information System (SIS) or LMS (WISEflow → SIS direction).
 
-  Step 1  GET  /flows/{flowId}/submissions                           Fetch all submissions
-  Step 2  GET  /flows/{flowId}/participants/{pId}/item-based-marks   Fetch marks per participant
-  Step 3  (local) Transform WISEflow grade schema → SIS/LMS schema
+  Step 1  GET  /flows/{flowId}/submissions                           Fetch submission status
+  Step 2  GET  /flows/{flowId}/participants                          Resolve participantIds
+          GET  /flows/{flowId}/participants/{pId}/item-based-marks   Fetch marks per participant
+  Step 3  (local) Aggregate item marks → SIS/LMS grade schema
   Step 4  POST {SIS_ENDPOINT}                                        Push grades to SIS
 
-The script processes every participant in the submission list.
+Submissions carry only a submissionId and hand-in status — the participantId
+needed for marks lives on the participant object, so step 2 lists participants
+first and then pulls item-based marks for each. Item-based marks are returned as
+an array of per-item scores, which step 3 aggregates into a single total.
+
+If the flow is not configured for item-based marking the marks endpoint returns
+HTTP 403; the script reports this and continues so the pipeline stays green.
 Grade data is also written to grades_output.json for audit purposes.
 
 Prerequisites
@@ -47,7 +54,7 @@ load_dotenv(ROOT / ".env")
 sys.path.insert(0, str(ROOT))
 from shared.auth import get_headers  # noqa: E402
 
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 BASE_URL = os.environ["WISEFLOW_BASE_URL"].rstrip("/")
 FLOW_ID = os.environ.get("WISEFLOW_FLOW_ID", "REPLACE_WITH_FLOW_ID")
 SIS_ENDPOINT = os.environ.get("SIS_ENDPOINT", "")
@@ -57,14 +64,18 @@ _results: list = []
 
 
 def _wf_get(path: str) -> dict | list:
-    """Authenticated GET against the WISEflow API."""
+    """Authenticated GET against the WISEflow API, unwrapped to the data payload."""
     resp = requests.get(
         f"{BASE_URL}{path}",
         headers=get_headers(),
         timeout=20,
     )
     resp.raise_for_status()
-    return resp.json()
+    raw = resp.json()
+    # WISEflow wraps payloads in {"success", "data", "error"} — unwrap to the data.
+    if isinstance(raw, dict) and "success" in raw and "data" in raw:
+        return raw["data"]
+    return raw
 
 
 def _print_step(num: int, label: str) -> None:
@@ -75,26 +86,32 @@ def _print_step(num: int, label: str) -> None:
 # ── workflow steps ────────────────────────────────────────────────────────────
 
 def step_1_fetch_submissions(ctx: dict) -> dict:
-    _print_step(1, "Fetch all submissions for the flow")
+    _print_step(1, "Fetch submission status for the flow")
     path = f"/flows/{FLOW_ID}/submissions"
     print(f"  GET  {path}")
 
-    body = _wf_get(path)
-    submissions = body if isinstance(body, list) else body.get("submissions", [])
+    submissions = _wf_get(path)
+    handed_in = sum(1 for s in submissions if s.get("status", {}).get("handedIn"))
 
-    print(f"  ✓ Retrieved {len(submissions)} submission(s).")
+    print(f"  ✓ Retrieved {len(submissions)} submission(s); {handed_in} handed in.")
     _results.append({"step": 1, "label": "Fetch submissions", "path": path,
-                     "count": len(submissions)})
+                     "count": len(submissions), "handedIn": handed_in})
     ctx["submissions"] = submissions
     return ctx
 
 
 def step_2_fetch_marks(ctx: dict) -> dict:
-    _print_step(2, "Fetch item-based marks for each participant")
+    _print_step(2, "Resolve participants and fetch their item-based marks")
+
+    # Submissions carry no participantId — resolve it from the participant list.
+    p_path = f"/flows/{FLOW_ID}/participants"
+    print(f"  GET  {p_path}")
+    participants = _wf_get(p_path)
+    print(f"  ✓ {len(participants)} participant(s) on flow.")
 
     all_marks = []
-    for sub in ctx["submissions"]:
-        participant_id = sub.get("participantId") or sub.get("id")
+    for p in participants:
+        participant_id = p.get("participantId")
         if not participant_id:
             continue
 
@@ -103,11 +120,17 @@ def step_2_fetch_marks(ctx: dict) -> dict:
         try:
             marks = _wf_get(path)
         except requests.HTTPError as exc:
-            print(f"  ⚠  HTTP {exc.response.status_code} for participant {participant_id} — skipping.")
+            detail = ""
+            try:
+                detail = f" — {exc.response.json().get('error', {}).get('message', '')}"
+            except ValueError:
+                pass
+            print(f"  ⚠  HTTP {exc.response.status_code} for participant {participant_id}{detail} — skipping.")
             continue
 
         all_marks.append({
             "participantId": participant_id,
+            "userId": p.get("userId"),
             "marks": marks,
         })
         preview = json.dumps(marks, indent=2)
@@ -119,29 +142,34 @@ def step_2_fetch_marks(ctx: dict) -> dict:
 
 
 def step_3_transform(ctx: dict) -> dict:
-    """Map WISEflow grade fields to a generic SIS/LMS schema.
+    """Aggregate WISEflow item-based marks into a generic SIS/LMS schema.
 
+    Item-based marks are an array of per-item objects (itemNumber, score, state,
+    deactivated). We sum the scores of non-deactivated items into a single total.
     Adjust the mapping below to match your institution's SIS requirements.
     """
-    _print_step(3, "Transform grades to SIS schema (local operation)")
+    _print_step(3, "Aggregate item marks to SIS schema (local operation)")
 
     transformed = []
     for entry in ctx["all_marks"]:
-        marks = entry["marks"]
-        # WISEflow mark fields (may vary — check your API response)
-        grade = marks.get("grade") or marks.get("letterGrade") or marks.get("mark", "")
-        score = marks.get("score") or marks.get("totalScore") or marks.get("points")
+        items = entry["marks"] if isinstance(entry["marks"], list) else []
+        scored = [i for i in items if not i.get("deactivated")]
+        total = sum(i["score"] for i in scored if i.get("score") is not None)
+        all_scored = bool(scored) and all(i.get("score") is not None for i in scored)
         participant_id = entry["participantId"]
 
         sis_record = {
             "participantId": participant_id,   # Keep WISEflow id for audit trail
-            "grade": str(grade).strip(),
-            "score": score,
+            "userId": entry.get("userId"),
+            "totalScore": total,
+            "itemCount": len(items),
+            "complete": all_scored,
             "flowId": FLOW_ID,
             "source": "WISEflow",
         }
         transformed.append(sis_record)
-        print(f"  → Participant {participant_id}: grade={grade}, score={score}")
+        print(f"  → Participant {participant_id}: totalScore={total} "
+              f"across {len(items)} item(s), complete={all_scored}")
 
     print(f"\n  ✓ Transformed {len(transformed)} record(s).")
     _results.append({"step": 3, "label": "Transform", "recordsTransformed": len(transformed)})

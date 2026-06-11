@@ -66,6 +66,21 @@ Format: `[Package version] — WISEflow API version — Date`
 
 ---
 
+## [1.0.3] — API 1.34.0 — 2026-06-11
+
+### Added
+- FADS **Simulation** tab: end-to-end animated process diagram contrasting the PUSH (webhook) and PULL (grade passback) integration patterns
+- FADS **Data Flow** tab: sequence-diagram model showing each endpoint's posted/returned payloads, an icon travelling between systems, and a run checklist of what updated and what's next
+
+### Changed
+- FADS API Console and tab actions: request/response shapes audited against the API spec and verified against the live API — corrected user provisioning (`emails`/`firstName`/`lastName`/`roles`), flow creation (integer `type` + `managers`), the dates/activate `PATCH` bodies, participant enrolment, submissions, and item-based-marks
+- `lastTestedDate` refreshed to 2026-06-11 across all four packages (re-verified against the live API)
+
+### Fixed
+- FADS: removed a fabricated grade-push `PATCH` call — WISEflow only exports grades (pull), so the manual passback now logs the supported `GET /flows/{flowId}/participants/{pId}/item-based-marks` read
+
+---
+
 ## Upcoming
 
 Subscribe to [SYCAmore](https://sycamore.wiseflow.net) for advance notice of WISEflow API changes
