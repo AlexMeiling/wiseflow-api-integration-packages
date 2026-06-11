@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   title: WISEflow API
-  version: 1.34.0
+  version: 1.35.0
   description: |
     For details on authentication, best practices, rate limits, and webhooks, see the [WISEflow Service Center](https://help.wiseflow.net/service-centre/api).
 servers:
@@ -39,6 +39,8 @@ tags:
     description: In this section you will find endpoints for getting flow information
   - name: Flow Management
     description: In this section you will find endpoints for setting up a flow
+  - name: Participant Groups
+    description: In this section you will find endpoints for managing participant groups on a flow
   - name: Sequence of Flows (FLOWcombine)
     description: In this section you will find endpoints for managing Sequence of Flows (FLOWcombine)
   - name: Participants
@@ -1656,9 +1658,13 @@ paths:
         - Grade Justification
   /flow/{flowId}/groups:
     get:
-      description: If participants are grouped, this endpoint will return information on those groups
+      deprecated: true
+      description: |
+        If participants are grouped, this endpoint will return information on those groups.
+         Deprecated: use /flows/{flowId}/participant-groups instead.
+         End of life: Release 2028.03
       parameters:
-        - description: Identifies the flow using a flowId.
+        - description: Identifies the flow using a flowId
           in: path
           name: flowId
           required: true
@@ -1669,13 +1675,143 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/groups'
+                $ref: '#/components/schemas/legacy-groups'
           description: Returns participant group information for a given flow
         '404':
           content: {}
           description: Flow not found
       tags:
-        - Flow Information
+        - Participant Groups
+  /flows/{flowId}/participant-groups:
+    get:
+      description: If participants are grouped, this endpoint will return information on those groups
+      parameters:
+        - description: Identifies the flow using a flowId
+          in: path
+          name: flowId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Returns participant group information for a given flow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/groups-get-response'
+        '404':
+          description: Flow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+      tags:
+        - Participant Groups
+    post:
+      description: Creates a new participant group on the flow
+      parameters:
+        - description: Identifies the flow using a flowId
+          in: path
+          name: flowId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/create-group-request'
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/group-api-response'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+        '404':
+          description: Flow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+      tags:
+        - Participant Groups
+  /flows/{flowId}/participant-groups/{groupId}:
+    put:
+      description: Updates an existing participant group on the flow
+      parameters:
+        - description: Identifies the flow using a flowId
+          in: path
+          name: flowId
+          required: true
+          schema:
+            type: integer
+        - description: Identifies the group using a groupId
+          in: path
+          name: groupId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/update-group-request'
+      responses:
+        '200':
+          description: Group updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/group-api-response'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+        '404':
+          description: Flow or group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+      tags:
+        - Participant Groups
+    delete:
+      description: Deletes a participant group on the flow
+      parameters:
+        - description: Identifies the flow using a flowId
+          in: path
+          name: flowId
+          required: true
+          schema:
+            type: integer
+        - description: Identifies the group using a groupId
+          in: path
+          name: groupId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Group deleted
+        '404':
+          description: Flow or group not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/general-api-error-response'
+      tags:
+        - Participant Groups
   /flow/{flowId}/participants/add:
     post:
       description: |-
@@ -2440,7 +2576,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/schemas-assessor-types-get-response'
+                $ref: '#/components/schemas/assessor-types-get-response-2'
           description: Returns assessor types for the flow
         '404':
           content:
@@ -11415,6 +11551,30 @@ components:
       required:
         - containerId
       type: object
+    marking-guidance-sharing-setting:
+      description: Controls whether and when marking guidance material is shared with participants. Set per flow by a manager
+      properties:
+        visibility:
+          type: string
+          enum:
+            - not_shared
+            - shared_at_marking_end
+            - shared_on_date
+          description: |-
+            Sharing mode for marking guidance:
+            - `not_shared`: Marking guidance is never shared with participants.
+            - `shared_at_marking_end`: Shared automatically when the general marking period ends.
+            - `shared_on_date`: Shared at the unix timestamp given in `date`
+          example: shared_on_date
+        date:
+          type: integer
+          format: unixtime
+          nullable: true
+          description: Unix timestamp (seconds) at which marking guidance becomes shared with participants. Only set when `visibility` is `shared_on_date`; `null` otherwise
+          example: 1777500000
+      required:
+        - visibility
+      type: object
     content:
       properties:
         general:
@@ -11425,6 +11585,8 @@ components:
           $ref: '#/components/schemas/content-type-with-access'
         assessmentGuidelines:
           $ref: '#/components/schemas/content-type-with-access'
+        markingGuidanceSharingSetting:
+          $ref: '#/components/schemas/marking-guidance-sharing-setting'
       type: object
     explanation-common:
       properties:
@@ -11688,17 +11850,16 @@ components:
         - id
         - participantId
       type: object
-    group:
+    legacy-group:
+      description: Group response for the deprecated /flow/{flowId}/groups endpoint
       example:
-        number: 6
-        members:
-          - participantId: 5
-            id: 5
-          - participantId: 5
-            id: 5
-        name: name
         id: 0
+        number: 6
+        name: name
         creationDate: 1
+        members:
+          - id: 5
+            participantId: 5
       properties:
         id:
           format: integer
@@ -11723,11 +11884,145 @@ components:
         - name
         - number
       type: object
-    groups:
+    legacy-groups:
       description: ''
       items:
-        $ref: '#/components/schemas/group'
+        $ref: '#/components/schemas/legacy-group'
       type: array
+    group:
+      example:
+        id: 0
+        number: 6
+        name: name
+        creationDate: 1
+        participantReadOnly: false
+        externalId: ext-group-1
+        members:
+          - id: 5
+            participantId: 5
+      properties:
+        id:
+          format: integer
+          type: integer
+        number:
+          format: integer
+          type: integer
+        name:
+          format: string
+          type: string
+        creationDate:
+          format: integer
+          type: integer
+        participantReadOnly:
+          type: boolean
+          description: If true, participants cannot change the groups they are in
+        externalId:
+          type: string
+          nullable: true
+          description: External identifier for the group
+        members:
+          description: ''
+          items:
+            $ref: '#/components/schemas/groupMember'
+          type: array
+      required:
+        - creationDate
+        - id
+        - name
+        - number
+        - participantReadOnly
+      type: object
+    groups-get-response:
+      properties:
+        success:
+          format: boolean
+          type: boolean
+        data:
+          items:
+            $ref: '#/components/schemas/group'
+          type: array
+        error:
+          $ref: '#/components/schemas/api-error-response'
+      type: object
+    create-group-request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Group name
+          maxLength: 100
+          minLength: 1
+        number:
+          type: integer
+          description: Group number (zero or positive). Must be unique per flow
+          minimum: 0
+        participantIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: Participant ids to add to the group
+        participantReadOnly:
+          type: boolean
+          description: If true, participants cannot change the groups they are in
+        externalId:
+          type: string
+          description: External identifier for the group (unique or per flow or null)
+          maxLength: 255
+      required:
+        - name
+      example:
+        name: Group A
+        number: 1
+        participantIds:
+          - 1
+          - 2
+          - 3
+        participantReadOnly: false
+        externalId: ext-group-1
+    group-api-response:
+      properties:
+        success:
+          format: boolean
+          type: boolean
+        data:
+          $ref: '#/components/schemas/group'
+        error:
+          $ref: '#/components/schemas/api-error-response'
+      type: object
+    update-group-request:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Group name
+          maxLength: 100
+        number:
+          type: integer
+          description: Group number (zero or positive). Must be unique per flow
+          minimum: 0
+        participantIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: Full list of participant ids in the group
+        participantReadOnly:
+          type: boolean
+          description: If true, participants cannot change the groups they are in
+        externalId:
+          type: string
+          description: External identifier for the group (unique per flow or null)
+          maxLength: 255
+      example:
+        name: Group A
+        number: 1
+        participantIds:
+          - 1
+          - 2
+          - 3
+        participantReadOnly: false
+        externalId: ext-group-1
     participants-add-request-userData:
       properties:
         userDataTypeId:
@@ -12847,7 +13142,7 @@ components:
     x-api-key-error-response:
       example: Unauthorized
       type: string
-    schemas-assessor-type-response:
+    assessor-type-response-2:
       properties:
         id:
           format: integer
@@ -12858,18 +13153,18 @@ components:
           type: string
           example: Instruction text
           nullable: true
-    schemas-assessor-types-response:
+    assessor-types-response-2:
       items:
-        $ref: '#/components/schemas/schemas-assessor-type-response'
+        $ref: '#/components/schemas/assessor-type-response-2'
       type: array
-    schemas-assessor-types-get-response:
+    assessor-types-get-response-2:
       properties:
         success:
           format: boolean
           type: boolean
           example: true
         data:
-          $ref: '#/components/schemas/schemas-assessor-types-response'
+          $ref: '#/components/schemas/assessor-types-response-2'
         error:
           $ref: '#/components/schemas/api-error-response'
       type: object
@@ -12896,7 +13191,7 @@ components:
           type: boolean
           example: true
         data:
-          $ref: '#/components/schemas/schemas-assessor-type-response'
+          $ref: '#/components/schemas/assessor-type-response-2'
         error:
           $ref: '#/components/schemas/api-error-response'
       type: object
@@ -14134,7 +14429,7 @@ components:
           type: string
           example: '2021-01-01T00:00:00Z'
       type: object
-    schemas-pagination-response:
+    pagination-response-2:
       properties:
         limit:
           description: The number of items per page.
@@ -14163,7 +14458,7 @@ components:
         error:
           $ref: '#/components/schemas/api-error-response'
         pagination:
-          $ref: '#/components/schemas/schemas-pagination-response'
+          $ref: '#/components/schemas/pagination-response-2'
       type: object
     comment-share-type:
       type: string
@@ -14252,7 +14547,7 @@ components:
         error:
           $ref: '#/components/schemas/api-error-response'
         pagination:
-          $ref: '#/components/schemas/schemas-pagination-response'
+          $ref: '#/components/schemas/pagination-response-2'
       type: object
     submission-comments-response:
       properties:
@@ -14305,7 +14600,7 @@ components:
         error:
           $ref: '#/components/schemas/api-error-response'
         pagination:
-          $ref: '#/components/schemas/schemas-pagination-response'
+          $ref: '#/components/schemas/pagination-response-2'
       type: object
     marked-revision-files-response:
       properties:
@@ -14347,7 +14642,7 @@ components:
           format: datetime
           type: string
           example: '2021-01-01T00:00:00Z'
-    components-schemas-pagination-response:
+    pagination-response-3:
       properties:
         limit:
           description: Number of items per page
@@ -14376,7 +14671,7 @@ components:
         error:
           $ref: '#/components/schemas/api-error-response'
         pagination:
-          $ref: '#/components/schemas/components-schemas-pagination-response'
+          $ref: '#/components/schemas/pagination-response-3'
       type: object
     get-monitor-participant-comments-response:
       properties:
@@ -15912,7 +16207,7 @@ components:
         error:
           $ref: '#/components/schemas/api-error-response'
       type: object
-    schemas-assessor-group-response:
+    assessor-group-response-2:
       type: object
       properties:
         id:
@@ -15972,7 +16267,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/schemas-assessor-group-response'
+            $ref: '#/components/schemas/assessor-group-response-2'
         error:
           $ref: '#/components/schemas/api-error-response'
     add-assessor-group-request:
@@ -16051,7 +16346,7 @@ components:
           format: boolean
           type: boolean
         data:
-          $ref: '#/components/schemas/schemas-assessor-group-response'
+          $ref: '#/components/schemas/assessor-group-response-2'
         error:
           $ref: '#/components/schemas/api-error-response'
     update-assessor-group-request:

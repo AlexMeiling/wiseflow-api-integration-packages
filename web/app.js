@@ -615,7 +615,7 @@ function buildCard(pkg) {
     <div class="pkg-right">
       <h3 class="section-label">
         Preview
-        <span class="api-version">API 1.34.0</span>
+        <span class="api-version">API 1.35.0</span>
       </h3>
 
       <!-- Progress bar -->

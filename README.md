@@ -6,7 +6,7 @@ Each package is a standalone Python script (+ Postman collection) that executes 
 
 **Who is this for?** Integration developers and technical staff at institutions connecting their SIS/LMS to WISEflow — and anyone evaluating what a WISEflow integration involves before writing production code.
 
-> **WISEflow API version:** 1.34.0 (OAS 3.0)  
+> **WISEflow API version:** 1.35.0 (OAS 3.0)  
 > **Package version:** see `compatibility.json`
 
 ---
